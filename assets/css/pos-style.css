@@ -1,0 +1,267 @@
+/* Estilos para el TPV POS 2025 */
+#pos2025-wrap {
+    /* Estilos generales para tu contenedor principal si los necesitas */
+}
+
+#pos2025-app-container {
+    padding: 5px;
+    background-color: #f6f7f7;
+    min-height: 300px;
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 10px;
+}
+
+#pos-products-column {
+    grid-column: 1 / 2;
+    display: flex;
+    flex-direction: column;
+}
+
+#pos-products-results {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+}
+#pos-products-list {
+    flex-grow: 1;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    max-height: 400px;
+    overflow-y: auto;
+    border: 1px solid #e5e5e5;
+    background-color: #fff;
+}
+#pos-products-list li {
+    padding: 10px;
+    border-bottom: 1px solid #eee;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+#pos-products-list li:last-child {
+    border-bottom: none;
+}
+#pos-products-list img {
+    max-width: 50px;
+    height: auto;
+    border: 1px solid #eee;
+}
+#pos-products-list .product-info {
+    flex-grow: 1;
+}
+#pos-products-list .product-info strong {
+    display: block;
+}
+#pos-products-list .product-actions button,
+#pos-products-list .variation-actions button {
+    margin-left: 5px;
+    cursor: pointer;
+}
+.product-variations {
+    list-style: none;
+    padding-left: 20px;
+    margin-top: 8px;
+    margin-bottom: 0;
+    font-size: 0.9em;
+    width: 100%;
+}
+.product-variations li {
+    padding: 5px 0;
+    border: none;
+    border-top: 1px dashed #eee;
+    display: block;
+    align-items: initial;
+    gap: 5px;
+}
+.product-variations li span {
+    margin-right: 5px;
+}
+.product-variations .variation-actions {
+    float: right;
+}
+
+
+#pos-sidebar-column {
+    grid-column: 2 / 3;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+#pos-customer-section {
+    background-color: #fff;
+    padding: 15px;
+    border: 1px solid #e5e5e5;
+}
+#pos-customer-list {
+    list-style: none;
+    padding: 0;
+    margin: 10px 0 0 0;
+    max-height: 200px;
+    overflow-y: auto;
+    border: 1px solid #eee;
+}
+#pos-customer-list li {
+    padding: 8px;
+    border-bottom: 1px solid #eee;
+    overflow: hidden;
+}
+#pos-customer-list li:last-child {
+    border-bottom: none;
+}
+#pos-selected-customer {
+    margin-bottom: 10px; /* Ajustado margen */
+    padding: 8px;
+    background-color: #e0f2fe;
+    border: 1px solid #b3e0fd;
+    border-radius: 3px;
+    /* display: none; se controla por JS */
+}
+#pos-customer-search-area label {
+    margin-right: 5px;
+    vertical-align: middle;
+}
+#pos-customer-search-area input[type="search"] {
+    vertical-align: middle;
+}
+#pos-customer-search-area button {
+    vertical-align: middle;
+}
+
+
+#pos-cart-section {
+    background-color: #fff;
+    padding: 15px;
+    border: 1px solid #e5e5e5;
+}
+
+#pos-search-section {
+    background-color: #fff;
+    padding: 15px;
+    border: 1px solid #e5e5e5;
+    margin-bottom: 10px;
+}
+#pos-search-section label {
+    margin-right: 5px;
+}
+#pos-product-search {
+    min-width: 250px;
+    margin-right: 5px;
+}
+#pos-search-section .spinner.is-active,
+#pos-customer-section .spinner.is-active {
+    visibility: visible;
+    opacity: 1;
+}
+.spinner {
+    visibility: hidden;
+    opacity: 0;
+    float: none;
+    vertical-align: middle;
+    transition: opacity 0.3s ease-in-out;
+}
+
+
+#pos-cart-items {
+    list-style: none;
+    margin: 0 0 15px 0;
+    padding: 0;
+    max-height: 300px;
+    overflow-y: auto;
+}
+#pos-cart-items li {
+    padding: 8px 0;
+    border-bottom: 1px dashed #eee;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+}
+#pos-cart-items li:last-child {
+    border-bottom: none;
+}
+#pos-cart-items .item-name {
+    flex-grow: 1;
+    margin-right: 10px;
+}
+#pos-cart-items .item-qty {
+    display: flex;
+    align-items: center;
+}
+#pos-cart-items .item-qty .button-qty {
+    padding: 0 5px;
+    line-height: 1.5;
+    height: auto;
+    min-width: 20px;
+}
+#pos-cart-items .item-quantity-input {
+    width: 50px;
+    text-align: center;
+    margin: 0 3px;
+    padding: 2px 4px;
+    height: auto;
+}
+#pos-cart-items .item-price,
+#pos-cart-items .item-subtotal {
+    white-space: nowrap;
+    min-width: 60px;
+    text-align: right;
+}
+#pos-cart-items .remove-item {
+    color: #d63638;
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 1.5em;
+    line-height: 1;
+    padding: 0 5px;
+    margin-left: 5px;
+}
+#pos-cart-items .remove-item:hover {
+    color: #a00;
+}
+
+
+#pos-cart-total {
+    margin-top: 15px;
+    margin-bottom: 15px;
+    font-size: 1.3em;
+    font-weight: bold;
+    text-align: right;
+    border-top: 2px solid #ddd;
+    padding-top: 10px;
+}
+
+#pos-checkout-section {
+    margin-top: 15px;
+    border-top: 1px solid #eee;
+    padding-top: 15px;
+}
+
+#pos-checkout-button {
+    width: 100%;
+    padding: 10px 15px;
+    text-align: center;
+    font-size: 1.1em;
+}
+
+#pos-subscription-terms {
+    border: 1px dashed #ccc;
+    padding: 10px;
+    margin-top: 10px;
+    background-color: #fafafa;
+    /* display: none; se controla por JS */
+}
+#pos-subscription-terms label {
+    display: block;
+    margin-bottom: 3px;
+    font-weight: bold;
+}
+#pos-subscription-terms input[type="text"],
+#pos-subscription-terms input[type="date"],
+#pos-subscription-terms input[type="color"] {
+    width: 100%;
+    margin-bottom: 10px;
+}
