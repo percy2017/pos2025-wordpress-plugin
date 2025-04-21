@@ -85,30 +85,72 @@ function pos2025_register_rest_routes() {
         'args'                => array( /* ... args crear pedido ... */ ),
     ) );
 
-    // *** INICIO: Endpoint para eventos del calendario ***
-    register_rest_route( $namespace, '/events', array(
+    // Ruta para OBTENER eventos (Modificada para incluir personalizados)
+    register_rest_route( 'pos2025/v1', '/events', array(
         'methods'             => WP_REST_Server::READABLE, // GET
-        'callback'            => 'pos2025_api_get_calendar_events',
-        'permission_callback' => '__return_true', // O 'pos2025_api_permissions_check'
+        'callback'            => 'pos2025_api_get_calendar_events', // Misma función callback
+        'permission_callback' => '__return_true', // O tu callback de permisos real
         'args'                => array(
-             // Parámetros de fecha que FullCalendar envía automáticamente
-             'start' => array(
-                'description'       => 'Fecha de inicio para filtrar eventos (YYYY-MM-DDThh:mm:ss).',
+            'start' => array(
+                'description'       => 'Start date for event filtering (YYYY-MM-DD).',
                 'type'              => 'string',
-                'format'            => 'date-time', // Indica formato esperado
+                'format'            => 'date',
                 'required'          => false,
-                'sanitize_callback' => 'sanitize_text_field', // Sanitización básica
-             ),
-             'end' => array(
-                'description'       => 'Fecha de fin para filtrar eventos (YYYY-MM-DDThh:mm:ss).',
+                'validate_callback' => 'rest_validate_request_arg',
+            ),
+            'end'   => array(
+                'description'       => 'End date for event filtering (YYYY-MM-DD).',
                 'type'              => 'string',
-                'format'            => 'date-time',
+                'format'            => 'date',
                 'required'          => false,
-                'sanitize_callback' => 'sanitize_text_field',
-             ),
+                'validate_callback' => 'rest_validate_request_arg',
+            ),
         ),
     ) );
-    // *** FIN: Endpoint para eventos del calendario ***
+
+    // *** NUEVA RUTA para CREAR eventos personalizados ***
+    register_rest_route( 'pos2025/v1', '/events/custom', array(
+        'methods'             => WP_REST_Server::CREATABLE, // POST
+        'callback'            => 'pos2025_api_create_custom_event',
+        'permission_callback' => function () {
+            // ¡IMPORTANTE! Asegúrate de que solo usuarios autorizados puedan crear eventos
+            return current_user_can( 'manage_woocommerce' ); // O la capacidad que definas
+        },
+        'args'                => array(
+            'title' => array(
+                'description'       => 'Event title.',
+                'type'              => 'string',
+                'required'          => true,
+                'sanitize_callback' => 'sanitize_text_field',
+            ),
+            'start' => array(
+                'description'       => 'Event start date (YYYY-MM-DD).',
+                'type'              => 'string',
+                'format'            => 'date',
+                'required'          => true,
+                'validate_callback' => 'pos2025_validate_date_format', // Función de validación personalizada
+            ),
+            'description' => array(
+                'description'       => 'Event description (optional).',
+                'type'              => 'string',
+                'required'          => false,
+                'sanitize_callback' => 'sanitize_textarea_field',
+            ),
+            'color' => array(
+                'description'       => 'Event color (hex).',
+                'type'              => 'string',
+                'required'          => false,
+                'default'           => '#54a0ff', // Color por defecto si no se envía
+                'sanitize_callback' => 'sanitize_hex_color',
+            ),
+             'allDay' => array( // Aunque lo forzamos en JS, lo aceptamos aquí
+                'description'       => 'Is it an all-day event?',
+                'type'              => 'boolean',
+                'required'          => false,
+                'default'           => true,
+            ),
+        ),
+    ) );
 
 
     // --- FIN DE REGISTRO DE RUTAS ---
@@ -259,114 +301,200 @@ function pos2025_api_update_customer( WP_REST_Request $request ) { /* ... (sin c
   */
  function pos2025_api_create_order( WP_REST_Request $request ) { /* ... (sin cambios) ... */ }
 
-
-// *** INICIO: Callback para eventos del calendario ***
 /**
- * Callback para obtener los pedidos de tipo 'subscription' como eventos para FullCalendar.
+ * Función de validación para fechas YYYY-MM-DD.
+ */
+function pos2025_validate_date_format( $param, $request, $key ) {
+    if ( ! is_string( $param ) ) {
+        return new WP_Error( 'rest_invalid_param', sprintf( esc_html__( '%s is not a string.', 'pos2025' ), $key ), array( 'status' => 400 ) );
+    }
+    // Expresión regular simple para YYYY-MM-DD
+    if ( ! preg_match( '/^\d{4}-\d{2}-\d{2}$/', $param ) ) {
+        return new WP_Error( 'rest_invalid_param', sprintf( esc_html__( '%s must be in YYYY-MM-DD format.', 'pos2025' ), $key ), array( 'status' => 400 ) );
+    }
+    // Podrías añadir validación más estricta (checkdate) si es necesario
+    return true;
+}
+
+
+/**
+ * Callback para OBTENER eventos del calendario (Pedidos + Personalizados).
+ * MODIFICADO: Añade eventos personalizados desde wp_options.
  *
- * @param WP_REST_Request $request Datos de la petición (puede incluir 'start' y 'end').
- * @return WP_REST_Response|WP_Error Respuesta JSON con array de eventos o error.
+ * @param WP_REST_Request $request Datos de la solicitud.
+ * @return WP_REST_Response|WP_Error Respuesta con los eventos o error.
  */
 function pos2025_api_get_calendar_events( WP_REST_Request $request ) {
-    error_log('[POS CAL API] - get_calendar_events called.'); // Log inicial
+    $start_date_str = $request->get_param( 'start' );
+    $end_date_str   = $request->get_param( 'end' );
+    $events = array();
 
-    $start_date_str = $request->get_param('start');
-    $end_date_str   = $request->get_param('end');
-    error_log("[POS CAL API] - Received Start: {$start_date_str}, End: {$end_date_str}"); // Log fechas
-
-    $args = array(
-        'limit' => -1, // Obtener todos los pedidos que coincidan
-        'status' => array_keys( wc_get_order_statuses() ), // Considerar todos los estados
+    // --- 1. Obtener eventos desde Pedidos de WooCommerce ---
+    $order_query_args = array(
+        'limit'      => -1, // Obtener todos los pedidos que coincidan
+        'status'     => array_keys( wc_get_order_statuses() ), // Considerar todos los estados
         'meta_query' => array(
-            'relation' => 'AND', // Asegurar que ambas condiciones meta se cumplan
+            'relation' => 'AND',
             array(
                 'key'     => '_pos_sale_type',
-                'value'   => 'subscription',
+                'value'   => 'subscription', // Solo tipo suscripción/evento
                 'compare' => '=',
             ),
             array(
-                'key'     => '_pos_calendar_event_date', // Asegurarse que la fecha exista
+                'key'     => '_pos_calendar_event_date', // Asegurarse de que la fecha exista y no esté vacía
                 'compare' => 'EXISTS',
             ),
-            array(
-                'key'     => '_pos_calendar_event_date', // Y que no esté vacía
+             array(
+                'key'     => '_pos_calendar_event_date',
                 'value'   => '',
                 'compare' => '!=',
             ),
         ),
-        'orderby' => 'date',
-        'order'   => 'DESC',
+        'orderby'    => 'date',
+        'order'      => 'DESC',
     );
 
-    // --- Filtrado por Fechas (si se proporcionan start/end) ---
-    $date_query_conditions = array();
-    if ( $start_date_str && preg_match('/^\d{4}-\d{2}-\d{2}/', $start_date_str) ) {
-         $start_date = substr($start_date_str, 0, 10);
-         $date_query_conditions[] = array(
-             'key'     => '_pos_calendar_event_date',
-             'compare' => '>=',
-             'value'   => $start_date,
-             'type'    => 'DATE',
-         );
-         error_log("[POS CAL API] - Applying date filter: >= {$start_date}");
-    }
-     if ( $end_date_str && preg_match('/^\d{4}-\d{2}-\d{2}/', $end_date_str) ) {
-         $end_date = substr($end_date_str, 0, 10);
-         $date_query_conditions[] = array(
-             'key'     => '_pos_calendar_event_date',
-             'compare' => '<', // FullCalendar end date es exclusivo
-             'value'   => $end_date,
-             'type'    => 'DATE',
-         );
-         error_log("[POS CAL API] - Applying date filter: < {$end_date}");
-    }
+    // Añadir filtro de fecha si se proporcionan start y end
+    if ( $start_date_str && $end_date_str ) {
+        // Convertir a timestamp para comparación segura
+        $start_ts = strtotime( $start_date_str );
+        $end_ts   = strtotime( $end_date_str );
 
-    // Añadir las condiciones de fecha a la meta_query principal
-    if (!empty($date_query_conditions)) {
-        // Añadimos las condiciones de fecha dentro de la 'meta_query' existente
-        foreach ($date_query_conditions as $condition) {
-            $args['meta_query'][] = $condition;
+        if ( $start_ts && $end_ts ) {
+             $order_query_args['meta_query'][] = array(
+                'key'     => '_pos_calendar_event_date',
+                'value'   => array( date('Y-m-d', $start_ts), date('Y-m-d', $end_ts) ),
+                'compare' => 'BETWEEN',
+                'type'    => 'DATE', // Importante para comparar fechas correctamente
+            );
         }
-        // Aseguramos que todas las condiciones se cumplan
-        $args['meta_query']['relation'] = 'AND';
     }
 
-    error_log('[POS CAL API] - WC_Order_Query Args: ' . print_r($args, true)); // Log argumentos consulta
+    $orders = wc_get_orders( $order_query_args );
 
-    $orders = wc_get_orders( $args );
-    error_log('[POS CAL API] - Orders found: ' . count($orders)); // Log cantidad encontrada
-
-    $events = array();
     if ( ! empty( $orders ) ) {
         foreach ( $orders as $order ) {
-            $order_id = $order->get_id(); // Obtener ID para logs
             $event_title = $order->get_meta( '_pos_calendar_event_title', true );
-            $event_date  = $order->get_meta( '_pos_calendar_event_date', true ); // Formato YYYY-MM-DD
+            $event_date  = $order->get_meta( '_pos_calendar_event_date', true );
             $event_color = $order->get_meta( '_pos_calendar_event_color', true ) ?: '#3a87ad'; // Color por defecto
 
-            // Log detallado por pedido
-            error_log("[POS CAL API] - Processing Order ID {$order_id}: Title='{$event_title}', Date='{$event_date}', Color='{$event_color}'");
-
-            // Validar que tenemos fecha y título
-            if ( $event_date && $event_title && preg_match('/^\d{4}-\d{2}-\d{2}$/', $event_date) ) { // Validar formato fecha
-                $events[] = array(
-                    'id'    => $order_id, // ID del pedido
+            // Validar fecha y título
+            if ( $event_title && $event_date && preg_match('/^\d{4}-\d{2}-\d{2}$/', $event_date) ) {
+                 $customer_name = $order->get_billing_first_name() . ' ' . $order->get_billing_last_name();
+                 $events[] = array(
+                    'id'    => 'order_' . $order->get_id(), // Prefijo para distinguir
                     'title' => $event_title,
-                    'start' => $event_date, // FullCalendar entiende YYYY-MM-DD
+                    'start' => $event_date,
                     'color' => $event_color,
-                    'allDay'=> true, // Marcar como evento de día completo
+                    'allDay'=> true,
                     'url'   => $order->get_edit_order_url(), // Enlace para editar el pedido
-                    // 'extendedProps' => [ 'customer' => $order->get_formatted_billing_full_name() ] // Opcional
+                    'extendedProps' => array(
+                        'orderId' => $order->get_id(),
+                        'customer' => trim($customer_name) ?: __('Invitado', 'pos2025'),
+                        'type' => 'order' // Tipo de evento
+                    )
                 );
-            } else {
-                 error_log("[POS CAL API] - Skipping Order ID {$order_id}: Missing title or invalid/missing date ('{$event_date}').");
             }
         }
     }
 
-    error_log('[POS CAL API] - Final events array: ' . print_r($events, true)); // Log array final
+    // --- 2. Obtener eventos personalizados desde wp_options ---
+    $custom_events = get_option( 'pos2025_custom_events', array() );
+
+    if ( ! empty( $custom_events ) ) {
+        // Filtrar eventos personalizados por fecha si es necesario
+        $filtered_custom_events = array();
+        if ( $start_date_str && $end_date_str ) {
+            $start_ts = strtotime( $start_date_str );
+            $end_ts   = strtotime( $end_date_str );
+
+            if ( $start_ts && $end_ts ) {
+                foreach ( $custom_events as $custom_event ) {
+                    $event_ts = strtotime( $custom_event['start'] );
+                    // FullCalendar pide eventos que *terminan* en o después de 'start'
+                    // y *empiezan* en o antes de 'end'. Para eventos de día completo,
+                    // simplemente comprobamos si la fecha 'start' está dentro del rango.
+                    if ( $event_ts >= $start_ts && $event_ts < $end_ts ) { // FullCalendar usa un rango semi-abierto [start, end)
+                        $filtered_custom_events[] = $custom_event;
+                    }
+                }
+            } else {
+                 $filtered_custom_events = $custom_events; // Si las fechas no son válidas, devolver todos
+            }
+        } else {
+            $filtered_custom_events = $custom_events; // Si no hay filtro de fecha, devolver todos
+        }
+
+        // Añadir eventos personalizados filtrados al array final
+        // Asegurarse de que tienen las propiedades esperadas por FullCalendar
+        foreach ($filtered_custom_events as $cust_event) {
+             $events[] = array(
+                'id'            => $cust_event['id'], // ID único generado al crear
+                'title'         => $cust_event['title'],
+                'start'         => $cust_event['start'],
+                'color'         => $cust_event['color'] ?? '#54a0ff', // Color por defecto
+                'allDay'        => $cust_event['allDay'] ?? true,
+                // 'url'        => '', // Los eventos personalizados no tienen URL por defecto
+                'extendedProps' => array(
+                    'description' => $cust_event['description'] ?? '',
+                    'type'        => 'custom' // Tipo de evento
+                )
+            );
+        }
+    }
+
+
     return new WP_REST_Response( $events, 200 );
 }
-// *** FIN: Callback para eventos del calendario ***
+
+
+/**
+ * Callback para CREAR un evento personalizado.
+ * Guarda el evento en la opción 'pos2025_custom_events'.
+ *
+ * @param WP_REST_Request $request Datos de la solicitud.
+ * @return WP_REST_Response|WP_Error Respuesta con el evento creado o error.
+ */
+function pos2025_api_create_custom_event( WP_REST_Request $request ) {
+    // Los parámetros ya han sido validados y sanitizados por la definición de 'args'
+    $title       = $request->get_param('title');
+    $start_date  = $request->get_param('start');
+    $description = $request->get_param('description');
+    $color       = $request->get_param('color');
+    $allDay      = $request->get_param('allDay');
+
+    // Obtener eventos existentes
+    $existing_events = get_option( 'pos2025_custom_events', array() );
+
+    // Crear nuevo evento
+    $new_event = array(
+        'id'          => 'custom_' . wp_generate_uuid4(), // Generar ID único con prefijo
+        'title'       => $title,
+        'start'       => $start_date,
+        'description' => $description,
+        'color'       => $color,
+        'allDay'      => $allDay,
+        'type'        => 'custom' // Marcar como tipo personalizado
+    );
+
+    // Añadir al array
+    $existing_events[] = $new_event;
+
+    // Guardar el array actualizado en wp_options
+    // El tercer argumento (autoload) se puede poner a 'no' si no necesitas que se carguen siempre
+    $updated = update_option( 'pos2025_custom_events', $existing_events, 'yes' );
+
+    if ( $updated ) {
+        // Devolver el evento recién creado con estado 201 (Created)
+        return new WP_REST_Response( $new_event, 201 );
+    } else {
+        // Error al guardar en la base de datos
+        return new WP_Error(
+            'rest_custom_event_save_error',
+            __( 'Could not save the custom event to the database.', 'pos2025' ),
+            array( 'status' => 500 )
+        );
+    }
+}
 
 ?>
