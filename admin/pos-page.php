@@ -1,9 +1,4 @@
 <?php
-/**
- * Funciones para crear la página de administración del TPV (POS)
- * Versión: Eliminado modal de cliente y script pos-customer-manager.js
- */
-
 // Si este archivo es llamado directamente, abortar.
 if ( ! defined( 'ABSPATH' ) ) {
     exit;
@@ -16,11 +11,11 @@ function pos2025_add_pos_admin_menu() {
     add_menu_page(
         __( 'Terminal Punto de Venta', 'pos2025' ), // Título de la página
         __( 'POS 2025', 'pos2025' ),               // Título del menú
-        'manage_woocommerce',                      // Capacidad requerida para verla (puedes ajustarla)
-        'pos2025-terminal',                        // Slug único para la página
-        'pos2025_render_pos_page',                 // Función que mostrará el contenido de la página
-        'dashicons-store',                         // Icono del menú (puedes cambiarlo: https://developer.wordpress.org/resource/dashicons/)
-        56                                         // Posición en el menú (cerca de WooCommerce)
+        'manage_woocommerce',                      // Capacidad requerida (ajustable)
+        'pos2025-terminal',                        // Slug único
+        'pos2025_render_pos_page',                 // Función de renderizado
+        'dashicons-store',                         // Icono
+        56                                         // Posición
     );
 }
 add_action( 'admin_menu', 'pos2025_add_pos_admin_menu' );
@@ -31,7 +26,7 @@ add_action( 'admin_menu', 'pos2025_add_pos_admin_menu' );
 function pos2025_render_pos_page() {
     ?>
     <div class="wrap" id="pos2025-wrap">
-        <h1><?php esc_html_e( 'Terminal Punto de Venta (POS 2025)', 'pos2025' ); ?></h1>
+        <!-- <h1><?php esc_html_e( 'Terminal Punto de Venta (POS 2025)', 'pos2025' ); ?></h1> -->
 
         <div id="pos2025-app-container">
 
@@ -42,17 +37,15 @@ function pos2025_render_pos_page() {
                     <label for="pos-product-search"><?php esc_html_e( 'Buscar por nombre o SKU:', 'pos2025' ); ?></label>
                     <input type="search" id="pos-product-search" name="pos_product_search" placeholder="<?php esc_attr_e( 'Escribe para buscar...', 'pos2025' ); ?>">
                     <button id="pos-search-button" class="button button-primary"><?php esc_html_e( 'Buscar', 'pos2025' ); ?></button>
-                    <span class="spinner" style="float: none; vertical-align: middle;"></span> <?php // Spinner de carga de WP ?>
+                    <span class="spinner" style="float: none; vertical-align: middle;"></span>
                 </div>
 
                 <!-- Sección de Resultados de Productos -->
                 <div id="pos-products-results">
-                    <h2><?php esc_html_e( 'Resultados', 'pos2025' ); ?></h2>
+                    <!-- <h2><?php esc_html_e( 'Resultados', 'pos2025' ); ?></h2> -->
                     <ul id="pos-products-list">
-                        <!-- Los productos encontrados se añadirán aquí dinámicamente -->
                         <li><?php esc_html_e( 'Realiza una búsqueda para ver los productos.', 'pos2025' ); ?></li>
                     </ul>
-                    <!-- Paginación (opcional, para más adelante) -->
                     <div id="pos-pagination"></div>
                 </div>
             </div>
@@ -60,50 +53,90 @@ function pos2025_render_pos_page() {
             <!-- Columna Lateral (Cliente y Carrito) -->
             <div id="pos-sidebar-column">
 
-                <!-- Sección de Cliente (Búsqueda y Selección) -->
-                <div id="pos-customer-section" style="background-color: #fff; padding: 15px; border: 1px solid #e5e5e5; margin-bottom: 20px;">
+                <!-- Sección de Cliente -->
+                <div id="pos-customer-section" style="background-color: #fff; padding: 15px; border: 1px solid #e5e5e5;">
                     <h2><?php esc_html_e( 'Cliente', 'pos2025' ); ?></h2>
 
-                    <!-- Info Cliente Seleccionado -->
-                    <div id="pos-selected-customer" style="margin-bottom: 15px; padding: 10px; border: 1px solid #eee; background-color: #f9f9f9; display: none;">
-                        <strong><?php esc_html_e('Cliente Seleccionado:', 'pos2025'); ?></strong>
-                        <span id="selected-customer-info"></span>
-                        <button id="clear-customer-button" style="margin-left: 10px; color: red; background: none; border: none; cursor: pointer; font-size: 1.2em; vertical-align: middle;" title="<?php esc_attr_e('Quitar Cliente', 'pos2025'); ?>">&times;</button>
-                    </div>
+                    <!-- Contenedor para Búsqueda/Seleccionado (se oculta al mostrar el form) -->
+                    <div id="pos-customer-display-area">
+                        <!-- Info Cliente Seleccionado -->
+                        <div id="pos-selected-customer" style="margin-bottom: 15px; padding: 10px; border: 1px solid #eee; background-color: #f9f9f9; display: none;">
+                            <strong><?php esc_html_e('Cliente Seleccionado:', 'pos2025'); ?></strong>
+                            <span id="selected-customer-info"></span>
+                            <!-- BOTÓN EDITAR: Se muestra cuando hay cliente seleccionado -->
+                            <button id="pos-edit-customer-button" class="button button-small" style="margin-left: 10px; vertical-align: middle;" title="<?php esc_attr_e('Editar Cliente', 'pos2025'); ?>">
+                                <span class="dashicons dashicons-edit" style="vertical-align: text-bottom;"></span> <?php // esc_html_e('Editar', 'pos2025'); ?>
+                            </button>
+                            <button id="clear-customer-button" style="margin-left: 5px; color: red; background: none; border: none; cursor: pointer; font-size: 1.2em; vertical-align: middle;" title="<?php esc_attr_e('Quitar Cliente', 'pos2025'); ?>">&times;</button>
+                        </div>
 
-                    <!-- Área de Búsqueda de Cliente -->
-                    <div id="pos-customer-search-area">
-                        <label for="pos-customer-search" class="screen-reader-text"><?php esc_html_e( 'Buscar Cliente:', 'pos2025' ); ?></label>
-                        <input type="search" id="pos-customer-search" name="pos_customer_search" placeholder="<?php esc_attr_e( 'Buscar cliente (nombre, email...)', 'pos2025' ); ?>" style="width: calc(100% - 120px); margin-right: 5px;">
-                        <button id="pos-customer-search-button" class="button"><?php esc_html_e( 'Buscar', 'pos2025' ); ?></button>
-                        <span id="pos-customer-spinner" class="spinner" style="float: none; vertical-align: middle;"></span>
+                        <!-- Área de Búsqueda de Cliente -->
+                        <div id="pos-customer-search-area">
+                            <label for="pos-customer-search" class="screen-reader-text"><?php esc_html_e( 'Buscar Cliente:', 'pos2025' ); ?></label>
+                            <input type="search" id="pos-customer-search" name="pos_customer_search" placeholder="<?php esc_attr_e( 'Buscar cliente (nombre, email...)', 'pos2025' ); ?>" style="width: calc(100% - 160px); margin-right: 5px;"> <?php // Ajustado ancho ?>
+                            <button id="pos-customer-search-button" class="button"><?php esc_html_e( 'Buscar', 'pos2025' ); ?></button>
+                            <span id="pos-customer-spinner" class="spinner" style="float: none; vertical-align: middle;"></span>
+                            <!-- BOTÓN NUEVO CLIENTE: Ahora muestra el formulario inline -->
+                            <button id="pos-show-add-customer-form" class="button button-secondary" style="margin-left: 5px;">
+                                <?php esc_html_e( 'Nuevo +', 'pos2025' ); ?>
+                            </button>
+                        </div>
 
-                        <?php /* --- BOTÓN NUEVO CLIENTE COMENTADO ---
-                        // Este botón abría el modal que ha sido eliminado.
-                        // Puedes descomentarlo y darle una nueva funcionalidad (ej. mostrar formulario inline o redirigir).
-                        <button id="pos-open-add-customer-modal" class="button button-secondary" style="margin-left: 5px;">
-                            <?php esc_html_e( 'Nuevo +', 'pos2025' ); ?>
-                        </button>
+                        <!-- Lista de Resultados de Búsqueda de Cliente -->
+                        <ul id="pos-customer-list" style="list-style: none; margin: 10px 0 0 0; padding: 0; max-height: 150px; overflow-y: auto; border: 1px solid #ddd; background: #fefefe;">
+                            <?php // Los resultados de la búsqueda de clientes aparecerán aquí ?>
+                        </ul>
+                    </div> <!-- Fin pos-customer-display-area -->
+
+                    <!-- FORMULARIO AÑADIR/EDITAR CLIENTE (Inicialmente oculto) -->
+                    <div id="pos-customer-form-container" style="display: none; margin-top: 15px; border-top: 1px dashed #ccc; padding-top: 15px;">
+                        <h3 id="pos-customer-form-title"><?php esc_html_e('Añadir Nuevo Cliente', 'pos2025'); ?></h3>
+                        <input type="hidden" id="pos-customer-id" name="pos_customer_id" value="">
+
+                        <p>
+                            <label for="pos-customer-firstname"><?php esc_html_e('Nombre:', 'pos2025'); ?></label><br>
+                            <input type="text" id="pos-customer-firstname" name="pos_customer_firstname" class="regular-text" style="width: 100%;">
+                        </p>
+                        <p>
+                            <label for="pos-customer-lastname"><?php esc_html_e('Apellidos:', 'pos2025'); ?></label><br>
+                            <input type="text" id="pos-customer-lastname" name="pos_customer_lastname" class="regular-text" style="width: 100%;">
+                        </p>
+                        <p>
+                            <label for="pos-customer-email"><?php esc_html_e('Correo Electrónico:', 'pos2025'); ?> <span style="color:red;">*</span></label><br>
+                            <input type="email" id="pos-customer-email" name="pos_customer_email" class="regular-text" required style="width: 100%;">
+                        </p>
+                        <p>
+                            <label for="pos-customer-phone"><?php esc_html_e('Teléfono:', 'pos2025'); ?></label><br>
+                            <input type="tel" id="pos-customer-phone" name="pos_customer_phone" class="regular-text" style="width: 100%;">
+                        </p>
+                        <?php /* --- Campos de Dirección (Opcional, descomentar si los necesitas) ---
+                        <p>
+                            <label for="pos-customer-address1"><?php esc_html_e('Dirección 1:', 'pos2025'); ?></label><br>
+                            <input type="text" id="pos-customer-address1" name="pos_customer_address1" class="regular-text" style="width: 100%;">
+                        </p>
+                        <p>
+                            <label for="pos-customer-city"><?php esc_html_e('Ciudad:', 'pos2025'); ?></label><br>
+                            <input type="text" id="pos-customer-city" name="pos_customer_city" class="regular-text" style="width: 100%;">
+                        </p>
+                        <p>
+                            <label for="pos-customer-postcode"><?php esc_html_e('Código Postal:', 'pos2025'); ?></label><br>
+                            <input type="text" id="pos-customer-postcode" name="pos_customer_postcode" class="regular-text" style="width: 60px;">
+                        </p>
+                        <p>
+                            <label for="pos-customer-country"><?php esc_html_e('País:', 'pos2025'); ?></label><br>
+                            <?php // Podrías usar un select de países de WC aquí si quieres ?>
+                            <input type="text" id="pos-customer-country" name="pos_customer_country" class="regular-text" style="width: 100%;">
+                        </p>
                         */ ?>
-                    </div>
+                        <p>
+                            <button id="pos-save-customer-button" class="button button-primary"><?php esc_html_e('Guardar Cliente', 'pos2025'); ?></button>
+                            <button id="pos-cancel-customer-button" class="button button-secondary" type="button"><?php esc_html_e('Cancelar', 'pos2025'); ?></button>
+                            <span id="pos-customer-save-spinner" class="spinner" style="float: none; vertical-align: middle;"></span>
+                        </p>
+                        <div id="pos-customer-form-notice" style="color: red; margin-top: 10px;"></div> <?php // Para mostrar errores ?>
+                    </div> <!-- Fin pos-customer-form-container -->
 
-                    <!-- Lista de Resultados de Búsqueda de Cliente -->
-                    <ul id="pos-customer-list" style="list-style: none; margin: 10px 0 0 0; padding: 0; max-height: 150px; overflow-y: auto; border: 1px solid #ddd; background: #fefefe;">
-                        <?php // Los resultados de la búsqueda de clientes aparecerán aquí ?>
-                    </ul>
-
-                    <?php
-                    // Aquí podrías añadir el HTML para un formulario inline si eliges esa alternativa
-                    /*
-                    <div id="pos-add-customer-form-inline" style="display: none; margin-top: 15px; border-top: 1px dashed #ccc; padding-top: 15px;">
-                        <h3><?php esc_html_e('Añadir Nuevo Cliente (Inline)', 'pos2025'); ?></h3>
-                        // ... campos del formulario ...
-                        <button id="pos-save-customer-inline-button" class="button button-primary">Guardar</button>
-                        <button id="pos-cancel-customer-inline-button" class="button button-secondary">Cancelar</button>
-                    </div>
-                    */
-                    ?>
-                </div>
+                </div> <!-- Fin pos-customer-section -->
 
                 <!-- Sección del Carrito -->
                 <div id="pos-cart-section" style="background-color: #fff; padding: 15px; border: 1px solid #e5e5e5;">
@@ -130,7 +163,7 @@ function pos2025_render_pos_page() {
                         </label>
                     </div>
 
-                    <!-- Detalles de Suscripción/Evento (se muestra condicionalmente) -->
+                    <!-- Detalles de Suscripción/Evento -->
                     <div id="pos-subscription-terms" style="display: none; margin-bottom: 15px; padding: 10px; border: 1px dashed #ccc; background-color: #f9f9f9;">
                         <strong><?php esc_html_e( 'Datos Evento Calendario:', 'pos2025' ); ?></strong><br>
                         <label for="pos_subscription_title" style="display: block; margin-top: 10px; margin-bottom: 2px;">
@@ -148,18 +181,17 @@ function pos2025_render_pos_page() {
                         </label>
                         <input type="color" id="pos_subscription_color" name="pos_subscription_color" value="#3a87ad" style="width: 50px; height: 30px; padding: 2px; vertical-align: middle; margin-bottom: 10px;">
                     </div>
-                    <hr style="margin: 15px 0;">
+                    <!-- <hr style="margin: 15px 0;"> -->
 
                     <!-- Selector de Método de Pago -->
-                    <div class="pos-payment-gateway-selector" style="margin-bottom: 15px;">
+                    <div class="pos-payment-gateway-selector" style="margin-bottom: 5px;">
                         <label for="pos-payment-gateway"><strong><?php esc_html_e( 'Método de Pago:', 'pos2025' ); ?></strong></label>
-                        <select id="pos-payment-gateway" name="pos_payment_gateway" style="width: 100%;" disabled> <?php // Empezar deshabilitado ?>
+                        <select id="pos-payment-gateway" name="pos_payment_gateway" style="width: 100%;" disabled>
                             <option value=""><?php esc_html_e( '-- Cargando métodos... --', 'pos2025' ); ?></option>
-                            <?php // Las opciones se cargarán con JavaScript ?>
                         </select>
                         <span id="pos-gateway-spinner" class="spinner" style="float: none; vertical-align: middle;"></span>
                     </div>
-                    <hr style="margin: 15px 0;">
+                    <!-- <hr style="margin: 15px 0;"> -->
 
                     <!-- Nota para el Cliente -->
                     <div id="pos-customer-note-section" style="margin-bottom: 15px;">
@@ -179,42 +211,61 @@ function pos2025_render_pos_page() {
     </div> <!-- Fin wrap -->
 
     <?php
-    // --- EL MODAL HA SIDO ELIMINADO ---
 }
 
 /**
  * Enqueue scripts y estilos específicos para la página del POS.
+ * Incluye SweetAlert2.
  */
 function pos2025_enqueue_pos_assets( $hook_suffix ) {
     // Comprueba si estamos en nuestra página específica del TPV
-    // 'toplevel_page_pos2025-terminal' es el hook generado por add_menu_page
     if ( 'toplevel_page_pos2025-terminal' !== $hook_suffix ) {
         return;
     }
 
     // --- ENCOLAR ESTILOS ---
+
+    // Estilo de SweetAlert2 (Asumiendo que está en assets/vendor/sweetalert2/)
     wp_enqueue_style(
-        'pos2025-pos-style', // Handle único para el estilo
-        POS2025_PLUGIN_URL . 'assets/css/pos-style.css', // Ruta al archivo CSS
-        array(), // Dependencias (ninguna por ahora)
-        POS2025_VERSION // Versión (para control de caché)
+        'pos2025-sweetalert2-style', // Handle único para el estilo de SweetAlert2
+        POS2025_PLUGIN_URL . 'assets/vendor/sweetalert2/sweetalert2.min.css',
+        array(), // Sin dependencias de estilo
+        '11.0' // O la versión que hayas descargado
     );
 
-    // --- ENCOLAR SCRIPT PRINCIPAL (pos-app.js) ---
-    // NOTA: pos-customer-manager.js ha sido eliminado.
+    // Estilo principal del POS (depende de SweetAlert2 si quieres sobrescribir algo)
+    wp_enqueue_style(
+        'pos2025-pos-style',
+        POS2025_PLUGIN_URL . 'assets/css/pos-style.css',
+        array('pos2025-sweetalert2-style'), // Depende del estilo de SweetAlert2
+        POS2025_VERSION
+    );
+
+    // --- ENCOLAR SCRIPTS ---
+
+    // Script de SweetAlert2 (Asumiendo que está en assets/vendor/sweetalert2/)
     wp_enqueue_script(
-        'pos2025-pos-script', // Handle único para el script
-        POS2025_PLUGIN_URL . 'assets/js/pos-app.js', // Ruta al archivo JS
-        array('jquery', 'wp-api-fetch'), // Dependencias: jQuery y el módulo API Fetch de WP
-        POS2025_VERSION, // Versión
+        'pos2025-sweetalert2-script', // Handle único para el script de SweetAlert2
+        POS2025_PLUGIN_URL . 'assets/vendor/sweetalert2/sweetalert2.all.min.js',
+        array(), // Sin dependencias de JS
+        '11.0', // O la versión que hayas descargado
         true // Cargar en el footer
     );
 
-     // --- PASAR DATOS DE PHP A JAVASCRIPT (para pos-app.js) ---
-     // Asegúrate de que pos-app.js todavía necesite estos parámetros.
+    // Script Principal del POS
+    wp_enqueue_script(
+        'pos2025-pos-script',
+        POS2025_PLUGIN_URL . 'assets/js/pos-app.js',
+        // ¡IMPORTANTE! Añadir 'pos2025-sweetalert2-script' como dependencia
+        array('jquery', 'wp-api-fetch', 'pos2025-sweetalert2-script'),
+        POS2025_VERSION,
+        true // Cargar en el footer
+    );
+
+     // --- PASAR DATOS DE PHP A JAVASCRIPT ---
      $script_params = array(
-        'rest_url'        => esc_url_raw( rest_url( 'pos2025/v1/' ) ), // URL base de tu API personalizada
-        'wc_api_url'      => esc_url_raw( rest_url( 'wc/v3/' ) ),      // URL base de la API de WooCommerce
+        'rest_url'        => esc_url_raw( rest_url( 'pos2025/v1/' ) ),
+        'wc_api_url'      => esc_url_raw( rest_url( 'wc/v3/' ) ),
         'nonce'           => wp_create_nonce( 'wp_rest' ),
         'text_loading'    => __('Cargando...', 'pos2025'),
         'text_error'      => __('Error', 'pos2025'),
@@ -224,12 +275,29 @@ function pos2025_enqueue_pos_assets( $hook_suffix ) {
         'price_decimals'  => wc_get_price_decimals(),
         'thousand_sep'    => wc_get_price_thousand_separator(),
         'decimal_sep'     => wc_get_price_decimal_separator(),
-        // Puedes añadir más parámetros aquí si pos-app.js los necesita
+        // Textos formulario cliente
+        'text_add_customer_title' => esc_html__('Añadir Nuevo Cliente', 'pos2025'),
+        'text_edit_customer_title' => esc_html__('Editar Cliente', 'pos2025'),
+        'text_save_customer' => esc_html__('Guardar Cliente', 'pos2025'),
+        'text_saving' => esc_html__('Guardando...', 'pos2025'),
+        'text_customer_saved' => esc_html__('Cliente guardado correctamente.', 'pos2025'),
+        'text_fill_required_fields' => esc_html__('Por favor, completa los campos requeridos (*).', 'pos2025'),
+        'text_invalid_email' => esc_html__('Por favor, introduce un correo electrónico válido.', 'pos2025'),
+        'text_confirm_cancel' => esc_html__('¿Estás seguro de que quieres cancelar? Los cambios no guardados se perderán.', 'pos2025'),
+        'text_customer_not_found_edit' => esc_html__('Error: No se encontraron los datos del cliente para editar.', 'pos2025'),
+        // Nuevos textos para SweetAlert
+        'swal_success_title' => esc_html__('¡Éxito!', 'pos2025'),
+        'swal_error_title' => esc_html__('Error', 'pos2025'),
+        'swal_warning_title' => esc_html__('Atención', 'pos2025'),
+        'swal_order_created_message' => esc_html__('Pedido creado con éxito.', 'pos2025'),
+        'swal_cart_empty' => esc_html__('El carrito está vacío.', 'pos2025'),
+        'swal_select_payment' => esc_html__('Por favor, selecciona un método de pago.', 'pos2025'),
+        'swal_select_customer_for_type' => esc_html__('Para ventas de tipo "%s", por favor, busca y selecciona un cliente.', 'pos2025'), // %s será reemplazado por el tipo
+        'swal_subscription_title_missing' => esc_html__('Por favor, introduce un título para el evento de suscripción.', 'pos2025'),
+        'swal_subscription_date_missing' => esc_html__('Por favor, selecciona una fecha para el evento.', 'pos2025'),
     );
 
-    // Localizar SOLO para pos-app.js
     wp_localize_script( 'pos2025-pos-script', 'pos2025_pos_params', $script_params );
-
 }
 add_action( 'admin_enqueue_scripts', 'pos2025_enqueue_pos_assets' );
 

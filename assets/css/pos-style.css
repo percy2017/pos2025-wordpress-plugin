@@ -1,4 +1,10 @@
 /* Estilos para el TPV POS 2025 */
+
+/* Añadido: Mejor manejo del tamaño de caja para todos los elementos */
+*, *::before, *::after {
+    box-sizing: border-box;
+}
+
 #pos2025-wrap {
     /* Estilos generales para tu contenedor principal si los necesitas */
 }
@@ -8,6 +14,7 @@
     background-color: #f6f7f7;
     min-height: 300px;
     display: grid;
+    /* Layout por defecto (escritorio): 2 columnas */
     grid-template-columns: 2fr 1fr;
     gap: 10px;
 }
@@ -16,19 +23,25 @@
     grid-column: 1 / 2;
     display: flex;
     flex-direction: column;
+    /* Añadido: Asegura que no se desborde innecesariamente */
+    overflow: hidden;
 }
 
 #pos-products-results {
     flex-grow: 1;
     display: flex;
     flex-direction: column;
+    /* Añadido: Para contener la lista que puede tener overflow */
+    min-height: 0; /* Necesario para flexbox y overflow */
 }
+
 #pos-products-list {
     flex-grow: 1;
     list-style: none;
     margin: 0;
     padding: 0;
-    max-height: 400px;
+    /* Ajustado: Altura máxima relativa para mejor adaptación */
+    max-height: 55vh; /* Puedes ajustar este valor (vh = viewport height) */
     overflow-y: auto;
     border: 1px solid #e5e5e5;
     background-color: #fff;
@@ -44,24 +57,32 @@
     border-bottom: none;
 }
 #pos-products-list img {
-    max-width: 50px;
+    max-width: 40px; /* Ligeramente más pequeño para móviles */
     height: auto;
     border: 1px solid #eee;
+    flex-shrink: 0; /* Evita que la imagen se encoja demasiado */
 }
 #pos-products-list .product-info {
     flex-grow: 1;
+    /* Añadido: Evita que el texto largo rompa el layout */
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 #pos-products-list .product-info strong {
     display: block;
+    white-space: nowrap; /* Evita saltos de línea en el nombre */
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 #pos-products-list .product-actions button,
 #pos-products-list .variation-actions button {
     margin-left: 5px;
     cursor: pointer;
+    padding: 5px 8px; /* Asegura un área de toque mínima */
 }
 .product-variations {
     list-style: none;
-    padding-left: 20px;
+    padding-left: 15px; /* Reducido padding */
     margin-top: 8px;
     margin-bottom: 0;
     font-size: 0.9em;
@@ -71,15 +92,22 @@
     padding: 5px 0;
     border: none;
     border-top: 1px dashed #eee;
-    display: block;
+    display: block; /* Cambiado para mejor flujo en móvil */
     align-items: initial;
     gap: 5px;
+    position: relative; /* Para posicionar acciones si es necesario */
 }
 .product-variations li span {
     margin-right: 5px;
+    display: inline-block; /* Asegura espacio */
+    margin-bottom: 5px; /* Espacio antes de los botones */
 }
 .product-variations .variation-actions {
-    float: right;
+    /* Ajustado: Mejor posicionamiento en móvil */
+    /* float: right; quitado */
+    display: block; /* Ocupa su propia línea */
+    text-align: right; /* Alinea botones a la derecha */
+    margin-top: 5px;
 }
 
 
@@ -90,70 +118,76 @@
     gap: 10px;
 }
 
-#pos-customer-section {
+/* Secciones de la barra lateral */
+#pos-customer-section,
+#pos-cart-section,
+#pos-search-section {
     background-color: #fff;
-    padding: 15px;
+    padding: 10px; /* Reducido padding para móviles */
     border: 1px solid #e5e5e5;
 }
+
+#pos-search-section {
+    margin-bottom: 10px; /* Mantiene separación */
+}
+#pos-search-section label,
+#pos-customer-search-area label {
+    margin-right: 5px;
+    vertical-align: middle;
+    display: block; /* Etiqueta encima del input en móvil */
+    margin-bottom: 5px;
+}
+#pos-product-search,
+#pos-customer-search {
+    /* Ajustado: Ocupa ancho disponible */
+    width: 100%;
+    margin-right: 0; /* Sin margen derecho */
+    margin-bottom: 5px; /* Espacio antes del botón */
+    min-width: auto; /* Quita el min-width fijo */
+}
+#pos-search-section button,
+#pos-customer-search-area button {
+    vertical-align: middle;
+    /* Opcional: Hacer botón de ancho completo */
+    /* width: 100%; */
+    /* padding: 8px 10px; */
+}
+
 #pos-customer-list {
     list-style: none;
     padding: 0;
     margin: 10px 0 0 0;
-    max-height: 200px;
+    max-height: 150px; /* Reducida altura máxima */
     overflow-y: auto;
     border: 1px solid #eee;
 }
 #pos-customer-list li {
     padding: 8px;
     border-bottom: 1px solid #eee;
-    overflow: hidden;
+    overflow: hidden; /* Mantiene el texto contenido */
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    cursor: pointer; /* Indica que es clickeable */
 }
 #pos-customer-list li:last-child {
     border-bottom: none;
 }
 #pos-selected-customer {
-    margin-bottom: 10px; /* Ajustado margen */
+    margin-bottom: 10px;
     padding: 8px;
     background-color: #e0f2fe;
     border: 1px solid #b3e0fd;
     border-radius: 3px;
-    /* display: none; se controla por JS */
-}
-#pos-customer-search-area label {
-    margin-right: 5px;
-    vertical-align: middle;
-}
-#pos-customer-search-area input[type="search"] {
-    vertical-align: middle;
-}
-#pos-customer-search-area button {
-    vertical-align: middle;
+    word-wrap: break-word; /* Permite que nombres largos se rompan */
 }
 
-
-#pos-cart-section {
-    background-color: #fff;
-    padding: 15px;
-    border: 1px solid #e5e5e5;
-}
-
-#pos-search-section {
-    background-color: #fff;
-    padding: 15px;
-    border: 1px solid #e5e5e5;
-    margin-bottom: 10px;
-}
-#pos-search-section label {
-    margin-right: 5px;
-}
-#pos-product-search {
-    min-width: 250px;
-    margin-right: 5px;
-}
 #pos-search-section .spinner.is-active,
 #pos-customer-section .spinner.is-active {
     visibility: visible;
     opacity: 1;
+    display: inline-block; /* Asegura que se muestre */
+    vertical-align: middle;
+    margin-left: 5px;
 }
 .spinner {
     visibility: hidden;
@@ -168,7 +202,7 @@
     list-style: none;
     margin: 0 0 15px 0;
     padding: 0;
-    max-height: 300px;
+    max-height: 250px; /* Reducida altura máxima */
     overflow-y: auto;
 }
 #pos-cart-items li {
@@ -177,27 +211,34 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    gap: 10px;
+    gap: 8px; /* Ligeramente reducido */
+    flex-wrap: wrap; /* Permite que los elementos se envuelvan si no caben */
 }
 #pos-cart-items li:last-child {
     border-bottom: none;
 }
 #pos-cart-items .item-name {
     flex-grow: 1;
-    margin-right: 10px;
+    flex-basis: 100px; /* Base mínima antes de envolver */
+    margin-right: 5px;
+    /* Añadido: Mejor manejo de texto largo */
+    word-break: break-word;
 }
 #pos-cart-items .item-qty {
     display: flex;
     align-items: center;
+    flex-basis: 120px; /* Espacio para botones y cantidad */
+    flex-grow: 0; /* No crece */
+    flex-shrink: 0; /* No se encoge */
 }
 #pos-cart-items .item-qty .button-qty {
-    padding: 0 5px;
+    padding: 0 6px; /* Área de toque */
     line-height: 1.5;
     height: auto;
-    min-width: 20px;
+    min-width: 25px; /* Área de toque */
 }
 #pos-cart-items .item-quantity-input {
-    width: 50px;
+    width: 45px; /* Ligeramente más estrecho */
     text-align: center;
     margin: 0 3px;
     padding: 2px 4px;
@@ -206,18 +247,21 @@
 #pos-cart-items .item-price,
 #pos-cart-items .item-subtotal {
     white-space: nowrap;
-    min-width: 60px;
+    min-width: 55px; /* Ligeramente más estrecho */
     text-align: right;
+    flex-basis: 60px; /* Espacio reservado */
+    flex-grow: 0;
 }
 #pos-cart-items .remove-item {
     color: #d63638;
     background: none;
     border: none;
     cursor: pointer;
-    font-size: 1.5em;
+    font-size: 1.6em; /* Ligeramente más grande para tocar */
     line-height: 1;
     padding: 0 5px;
     margin-left: 5px;
+    flex-shrink: 0; /* No se encoge */
 }
 #pos-cart-items .remove-item:hover {
     color: #a00;
@@ -227,7 +271,7 @@
 #pos-cart-total {
     margin-top: 15px;
     margin-bottom: 15px;
-    font-size: 1.3em;
+    font-size: 1.2em; /* Ligeramente más pequeño */
     font-weight: bold;
     text-align: right;
     border-top: 2px solid #ddd;
@@ -242,7 +286,7 @@
 
 #pos-checkout-button {
     width: 100%;
-    padding: 10px 15px;
+    padding: 12px 15px; /* Más padding para mejor toque */
     text-align: center;
     font-size: 1.1em;
 }
@@ -264,4 +308,84 @@
 #pos-subscription-terms input[type="color"] {
     width: 100%;
     margin-bottom: 10px;
+    padding: 8px; /* Mejor padding para inputs */
+}
+
+/* --- Media Query para pantallas pequeñas (Móviles y Tablets pequeñas) --- */
+/* Puedes ajustar el valor de max-width (ej. 768px, 800px, 992px) según necesites */
+@media (max-width: 800px) {
+    #pos2025-app-container {
+        /* Cambia a una sola columna */
+        grid-template-columns: 1fr;
+        gap: 15px; /* Un poco más de espacio vertical */
+    }
+
+    /* Resetea la asignación de columna explícita */
+    #pos-products-column,
+    #pos-sidebar-column {
+        grid-column: auto; /* O 1 / -1 */
+    }
+
+    #pos-products-list {
+         /* Ajusta la altura si es necesario para móvil */
+        max-height: 45vh; /* Un poco menos de altura quizás */
+    }
+
+    #pos-cart-items {
+        max-height: 30vh; /* Ajusta según veas necesario */
+    }
+
+    /* Asegura que las secciones de la barra lateral ocupen todo el ancho */
+    #pos-customer-section,
+    #pos-cart-section,
+    #pos-search-section {
+        width: 100%;
+    }
+
+    /* Ajustes específicos para elementos dentro de la lista de productos en móvil */
+    #pos-products-list li {
+        /* Podrías hacer que la imagen y el texto se apilen si es muy estrecho */
+        /* flex-direction: column; */
+        /* align-items: flex-start; */
+    }
+     #pos-products-list img {
+        max-width: 35px; /* Aún más pequeño si es necesario */
+    }
+
+    /* Ajustes para el carrito en móvil */
+     #pos-cart-items li {
+        /* Puedes forzar el wrap más fácilmente si es necesario */
+        /* flex-wrap: wrap; ya está arriba, pero puedes ajustar aquí */
+        gap: 5px;
+    }
+    #pos-cart-items .item-name {
+        flex-basis: calc(100% - 180px); /* Intenta calcular espacio restante */
+    }
+    #pos-cart-items .item-qty {
+        /* Quizás necesite más espacio o ir debajo */
+    }
+
+}
+
+/* --- Opcional: Media Query para pantallas MUY pequeñas --- */
+@media (max-width: 480px) {
+    body {
+        /* Podrías reducir el tamaño de fuente base para pantallas muy pequeñas */
+        /* font-size: 13px; */
+    }
+
+    #pos-products-list li,
+    #pos-cart-items li {
+        padding: 8px 5px; /* Menos padding horizontal */
+        gap: 5px;
+    }
+
+    #pos-cart-items .item-name {
+       /* Más ajustes si el texto se corta mucho */
+    }
+
+    #pos-checkout-button {
+        padding: 10px;
+        font-size: 1em;
+    }
 }

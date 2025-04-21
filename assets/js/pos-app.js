@@ -1,13 +1,14 @@
 // wp-content/plugins/pos2025/assets/js/pos-app.js
 /**
  * Lógica principal de la interfaz del TPV (POS 2025).
- * Maneja la búsqueda de productos, gestión de clientes (búsqueda/selección),
+ * Maneja la búsqueda de productos, gestión de clientes (búsqueda/selección/creación/edición),
  * el carrito, los tipos de venta, los métodos de pago y el proceso de checkout.
+ * Utiliza SweetAlert2 para notificaciones.
+ * Carga productos destacados al inicio.
  *
- * @version 1.1.0 - Integrada lógica de cliente.
+ * @version 1.4.0
  */
 
-// Esperar a que el DOM esté completamente cargado antes de ejecutar el script.
 document.addEventListener('DOMContentLoaded', function() {
     'use strict'; // Usar modo estricto para mejor calidad de código.
 
@@ -18,8 +19,22 @@ document.addEventListener('DOMContentLoaded', function() {
     // Verificar que los parámetros localizados desde PHP están disponibles.
     if (typeof pos2025_pos_params === 'undefined') {
         console.error('Error Crítico: pos2025_pos_params no está definido. Asegúrate de que wp_localize_script se usa correctamente.');
+        // Mostrar error al usuario si SweetAlert está disponible (puede que no si el error es en PHP)
+        if (typeof Swal !== 'undefined') {
+            Swal.fire({ icon: 'error', title: 'Error Crítico', text: 'Faltan parámetros de configuración. Contacta al administrador.' });
+        } else {
+            alert('Error Crítico: Faltan parámetros de configuración. Contacta al administrador.'); // Fallback a alert nativo
+        }
         return; // Detener si faltan parámetros esenciales.
     }
+    // Verificar si SweetAlert está cargado
+    if (typeof Swal === 'undefined') {
+         console.error('Error Crítico: SweetAlert2 (Swal) no está definido. Verifica el encolado del script.');
+         // Mostrar alert nativo como fallback
+         alert('Error Crítico: Falta una librería esencial (SweetAlert2). La interfaz puede no funcionar correctamente.');
+         // No detenemos la ejecución necesariamente, pero las alertas serán nativas o fallarán.
+    }
+
     console.log('API Params:', pos2025_pos_params);
 
     // =========================================================================
@@ -42,7 +57,22 @@ document.addEventListener('DOMContentLoaded', function() {
     const selectedCustomerDiv = document.getElementById('pos-selected-customer');
     const selectedCustomerInfoSpan = document.getElementById('selected-customer-info');
     const clearCustomerButton = document.getElementById('clear-customer-button');
-    // const openAddCustomerModalButton = document.getElementById('pos-open-add-customer-modal'); // Comentado, ya no se usa modal
+    const customerDisplayArea = document.getElementById('pos-customer-display-area'); // Contenedor búsqueda/seleccionado
+
+    // --- Formulario Cliente ---
+    const customerFormContainer = document.getElementById('pos-customer-form-container');
+    const showAddCustomerFormButton = document.getElementById('pos-show-add-customer-form');
+    const editCustomerButton = document.getElementById('pos-edit-customer-button');
+    const saveCustomerButton = document.getElementById('pos-save-customer-button');
+    const cancelCustomerButton = document.getElementById('pos-cancel-customer-button');
+    const customerFormTitle = document.getElementById('pos-customer-form-title');
+    const customerIdInput = document.getElementById('pos-customer-id');
+    const customerFirstNameInput = document.getElementById('pos-customer-firstname');
+    const customerLastNameInput = document.getElementById('pos-customer-lastname');
+    const customerEmailInput = document.getElementById('pos-customer-email');
+    const customerPhoneInput = document.getElementById('pos-customer-phone');
+    const customerSaveSpinner = document.getElementById('pos-customer-save-spinner');
+    const customerFormNotice = document.getElementById('pos-customer-form-notice');
 
     // --- Sección Carrito ---
     const cartItemsList = document.getElementById('pos-cart-items');
@@ -66,7 +96,10 @@ document.addEventListener('DOMContentLoaded', function() {
     const essentialElements = [
         searchInput, searchButton, resultsList, productSearchSpinner, // Productos
         customerSearchInput, customerSearchButton, customerSpinner, customerList, // Cliente (Búsqueda)
-        selectedCustomerDiv, selectedCustomerInfoSpan, clearCustomerButton, // Cliente (Selección)
+        selectedCustomerDiv, selectedCustomerInfoSpan, clearCustomerButton, customerDisplayArea, // Cliente (Selección/Display)
+        customerFormContainer, showAddCustomerFormButton, editCustomerButton, saveCustomerButton, cancelCustomerButton, // Cliente (Formulario Btns)
+        customerFormTitle, customerIdInput, customerFirstNameInput, customerLastNameInput, customerEmailInput, customerPhoneInput, // Cliente (Formulario Inputs)
+        customerSaveSpinner, customerFormNotice, // Cliente (Formulario Feedback)
         cartItemsList, cartTotalAmount, // Carrito
         checkoutButton, paymentGatewaySelect, gatewaySpinner, saleTypeRadios, customerNoteTextarea, // Checkout
         subscriptionTermsDiv, subscriptionTitleInput, subscriptionStartDateInput, subscriptionColorInput // Suscripción
@@ -78,12 +111,22 @@ document.addEventListener('DOMContentLoaded', function() {
         const missingIds = [
             !searchInput && 'pos-product-search', !searchButton && 'pos-search-button', !resultsList && 'pos-products-list', !productSearchSpinner && '#pos-search-section .spinner',
             !customerSearchInput && 'pos-customer-search', !customerSearchButton && 'pos-customer-search-button', !customerSpinner && 'pos-customer-spinner', !customerList && 'pos-customer-list',
-            !selectedCustomerDiv && 'pos-selected-customer', !selectedCustomerInfoSpan && 'selected-customer-info', !clearCustomerButton && 'clear-customer-button',
+            !selectedCustomerDiv && 'pos-selected-customer', !selectedCustomerInfoSpan && 'selected-customer-info', !clearCustomerButton && 'clear-customer-button', !customerDisplayArea && 'pos-customer-display-area',
+            !customerFormContainer && 'pos-customer-form-container', !showAddCustomerFormButton && 'pos-show-add-customer-form', !editCustomerButton && 'pos-edit-customer-button', !saveCustomerButton && 'pos-save-customer-button', !cancelCustomerButton && 'pos-cancel-customer-button',
+            !customerFormTitle && 'pos-customer-form-title', !customerIdInput && 'pos-customer-id', !customerFirstNameInput && 'pos-customer-firstname', !customerLastNameInput && 'pos-customer-lastname', !customerEmailInput && 'pos-customer-email', !customerPhoneInput && 'pos-customer-phone',
+            !customerSaveSpinner && 'pos-customer-save-spinner', !customerFormNotice && 'pos-customer-form-notice',
             !cartItemsList && 'pos-cart-items', !cartTotalAmount && 'cart-total-amount',
             !checkoutButton && 'pos-checkout-button', !paymentGatewaySelect && 'pos-payment-gateway', !gatewaySpinner && 'pos-gateway-spinner', !saleTypeRadios && 'input[name="pos_sale_type"]', !customerNoteTextarea && 'pos-customer-note',
             !subscriptionTermsDiv && 'pos-subscription-terms', !subscriptionTitleInput && 'pos_subscription_title', !subscriptionStartDateInput && 'pos_subscription_start_date', !subscriptionColorInput && 'pos_subscription_color'
         ].filter(Boolean); // Filtrar los que no faltan (false)
         console.error('Elementos faltantes:', missingIds.join(', '));
+        // Usar Swal si está disponible, si no, alert nativo
+        const errorMsg = 'Faltan elementos de la interfaz. Contacta al administrador.';
+        if (typeof Swal !== 'undefined') {
+            Swal.fire({ icon: 'error', title: 'Error Crítico', text: errorMsg });
+        } else {
+            alert(`Error Crítico: ${errorMsg}`);
+        }
         return; // Detener la ejecución si falta algo fundamental.
     }
 
@@ -96,9 +139,10 @@ document.addEventListener('DOMContentLoaded', function() {
     let currentProducts = []; // Almacena los resultados de la última búsqueda de productos [{ id, name, sku, price, ... }, ...]
     let currentCustomers = []; // Almacena los resultados de la última búsqueda de clientes
     let selectedCustomerId = null; // ID del cliente actualmente seleccionado
+    let currentSelectedCustomerObject = null; // Objeto completo del cliente seleccionado (para editar)
 
     // =========================================================================
-    // Funciones Auxiliares y de Lógica (Productos y Carrito - Sin cambios)
+    // Funciones Auxiliares y de Lógica (Productos y Carrito)
     // =========================================================================
 
     /**
@@ -153,6 +197,10 @@ document.addEventListener('DOMContentLoaded', function() {
             if (error.message) errorMessage += ` Detalles: ${error.message}`;
             if (error.code) errorMessage += ` (Código: ${error.code})`;
             resultsList.innerHTML = `<li class="error-message">${errorMessage}</li>`;
+            // Mostrar SweetAlert de error
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({ icon: 'error', title: pos2025_pos_params.swal_error_title || 'Error', text: errorMessage });
+            }
         } finally {
             productSearchSpinner.classList.remove('is-active'); // Ocultar spinner.
         }
@@ -210,7 +258,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 ${variationsHtml}`;
             resultsList.appendChild(listItem);
         });
-        // Nota: Los listeners para los botones 'Añadir' se manejan mediante delegación en la inicialización.
     }
 
     /**
@@ -223,46 +270,40 @@ document.addEventListener('DOMContentLoaded', function() {
         let product = null;
         let variation = null;
 
-        // Verificar si el clic fue en un botón de añadir (simple o variación).
         if (targetButton.classList.contains('add-simple-to-cart') || targetButton.classList.contains('add-variation-to-cart')) {
-            // Encontrar el <li> padre del producto.
             const productLi = targetButton.closest('li[data-product-id]');
-            if (!productLi) return; // Salir si no se encuentra el <li>.
+            if (!productLi) return;
 
             const productId = productLi.dataset.productId;
-            // Buscar el producto en los resultados actuales guardados.
             product = currentProducts.find(p => p.id == productId);
-            if (!product) return; // Salir si no se encuentra el producto.
+            if (!product) return;
 
-            // Si es un botón de añadir variación, encontrar la variación específica.
             if (targetButton.classList.contains('add-variation-to-cart')) {
                 const variationId = targetButton.dataset.variationId;
                 if (!variationId || !product.variations) return;
                 variation = product.variations.find(v => v.variation_id == variationId);
-                if (!variation) return; // Salir si no se encuentra la variación.
+                if (!variation) return;
             }
         } else {
-            return; // Salir si no fue un botón de añadir.
+            return;
         }
 
-        // Construir el objeto de datos para añadir al carrito.
-        if (variation) { // Si se seleccionó una variación.
+        if (variation) {
             productDataForCart = {
                 id: product.id, variation_id: variation.variation_id, name: product.name,
-                variation_name: variation.variation_name || '', // Nombre legible de la variación.
+                variation_name: variation.variation_name || '',
                 price: variation.price, quantity: 1,
                 sku: variation.sku || '', image_url: variation.image_url || product.image_url,
             };
-        } else if (product && product.type === 'simple') { // Si es un producto simple.
+        } else if (product && product.type === 'simple') {
             productDataForCart = {
                 id: product.id, variation_id: null, name: product.name, variation_name: '',
                 price: product.price, quantity: 1, sku: product.sku || '', image_url: product.image_url || '',
             };
         }
 
-        // Si se construyeron datos válidos, añadirlos al carrito.
         if (productDataForCart) {
-            productDataForCart.price = parseFloat(productDataForCart.price) || 0; // Asegurar que el precio sea numérico.
+            productDataForCart.price = parseFloat(productDataForCart.price) || 0;
             addToCart(productDataForCart);
         }
     }
@@ -272,16 +313,12 @@ document.addEventListener('DOMContentLoaded', function() {
      * @param {Object} productData - Objeto con los datos del producto a añadir.
      */
     function addToCart(productData) {
-        // Crear un ID único para el item en el carrito (producto simple o variación).
         const cartItemId = productData.variation_id ? `${productData.id}-${productData.variation_id}` : `${productData.id}`;
-        // Buscar si el item ya existe en el carrito.
         const existingItemIndex = cart.findIndex(item => item.cartItemId === cartItemId);
 
         if (existingItemIndex > -1) {
-            // Si existe, incrementar la cantidad.
             cart[existingItemIndex].quantity += productData.quantity;
         } else {
-            // Si no existe, añadirlo como nuevo item.
             cart.push({
                 cartItemId: cartItemId,
                 productId: productData.id,
@@ -295,7 +332,7 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         }
         console.log('Carrito actualizado:', cart);
-        displayCart(); // Actualizar la visualización del carrito en la UI.
+        displayCart();
     }
 
     /**
@@ -315,13 +352,11 @@ document.addEventListener('DOMContentLoaded', function() {
         if (cart.length === 0) {
             cartItemsList.innerHTML = pos2025_pos_params.text_cart_empty || '<li>El carrito está vacío.</li>';
         } else {
-            // Crear un <li> por cada item en el carrito.
             cart.forEach((item, index) => {
                 const listItem = document.createElement('li');
-                listItem.dataset.cartIndex = index; // Guardar índice para referencia.
-                // Usar wc_price para formatear (simplificado aquí, idealmente se haría con una función más robusta)
-                const itemPriceFormatted = typeof wc_price === 'function' ? wc_price(item.price) : item.price.toFixed(pos2025_pos_params.price_decimals || 2);
-                const subtotalFormatted = typeof wc_price === 'function' ? wc_price(item.price * item.quantity) : (item.price * item.quantity).toFixed(pos2025_pos_params.price_decimals || 2);
+                listItem.dataset.cartIndex = index;
+                const itemPriceFormatted = wc_price(item.price); // Usar función global wc_price
+                const subtotalFormatted = wc_price(item.price * item.quantity); // Usar función global wc_price
 
                 listItem.innerHTML = `
                     <span class="item-name">${item.name} ${item.variationName ? `(${item.variationName})` : ''}</span>
@@ -337,12 +372,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 cartItemsList.appendChild(listItem);
             });
         }
-        // Calcular y mostrar el total.
         const total = calculateTotal();
-        const totalFormatted = typeof wc_price === 'function' ? wc_price(total) : total.toFixed(pos2025_pos_params.price_decimals || 2);
+        const totalFormatted = wc_price(total); // Usar función global wc_price
         cartTotalAmount.textContent = totalFormatted;
-        updateCheckoutButtonState(); // Actualizar el estado del botón de pago.
-        // Nota: Listeners para botones del carrito (+/-/x/input) se manejan por delegación.
+        updateCheckoutButtonState();
     }
 
     /**
@@ -351,15 +384,14 @@ document.addEventListener('DOMContentLoaded', function() {
      * @param {number} newQuantity - Nueva cantidad deseada.
      */
     function updateQuantity(index, newQuantity) {
-        if (index < 0 || index >= cart.length) return; // Validar índice.
+        if (index < 0 || index >= cart.length) return;
 
         if (newQuantity < 1) {
-            cart.splice(index, 1); // Eliminar el item si la cantidad es 0 o menor.
+            cart.splice(index, 1);
         } else {
-            // TODO: Considerar añadir validación de stock aquí si es necesario.
-            cart[index].quantity = newQuantity; // Actualizar cantidad.
+            cart[index].quantity = newQuantity;
         }
-        displayCart(); // Redibujar el carrito.
+        displayCart();
     }
 
     /**
@@ -368,18 +400,18 @@ document.addEventListener('DOMContentLoaded', function() {
      */
     function handleCartActions(event) {
         const target = event.target;
-        const index = target.dataset.index; // Obtener índice del item desde data-attribute.
-        if (index === undefined) return; // Salir si no se hizo clic en un elemento con data-index.
+        const index = target.dataset.index;
+        if (index === undefined) return;
 
         const cartIndex = parseInt(index, 10);
-        if (isNaN(cartIndex) || cartIndex < 0 || cartIndex >= cart.length) return; // Validar índice.
+        if (isNaN(cartIndex) || cartIndex < 0 || cartIndex >= cart.length) return;
 
         if (target.classList.contains('decrease-qty')) {
             updateQuantity(cartIndex, cart[cartIndex].quantity - 1);
         } else if (target.classList.contains('increase-qty')) {
             updateQuantity(cartIndex, cart[cartIndex].quantity + 1);
         } else if (target.classList.contains('remove-item')) {
-            updateQuantity(cartIndex, 0); // Poner cantidad a 0 para eliminar.
+            updateQuantity(cartIndex, 0);
         }
     }
 
@@ -397,15 +429,48 @@ document.addEventListener('DOMContentLoaded', function() {
 
         const newQuantity = parseInt(target.value, 10);
         if (!isNaN(newQuantity)) {
-            updateQuantity(cartIndex, newQuantity); // Actualizar si es un número válido.
+            updateQuantity(cartIndex, newQuantity);
         } else {
-            // Si el valor no es un número válido, revertir al valor anterior.
             target.value = cart[cartIndex].quantity;
         }
     }
 
+    // --- NUEVA FUNCIÓN ---
+    /**
+     * Carga un conjunto inicial de productos (destacados) al iniciar el TPV.
+     */
+    async function loadInitialProducts() {
+        console.log('Cargando productos iniciales (destacados)...');
+        // Mostrar un mensaje de carga diferente o usar el spinner
+        resultsList.innerHTML = `<li>${pos2025_pos_params.text_loading || 'Cargando productos...'}</li>`;
+        if (productSearchSpinner) productSearchSpinner.classList.add('is-active');
+
+        const apiRoute = '/pos2025/v1/products';
+        // Llamar a la API pidiendo productos destacados y un límite bajo (ej. 8)
+        const queryParams = new URLSearchParams({ featured: 'true', per_page: 8 });
+        const fullPath = `${apiRoute}?${queryParams.toString()}`;
+
+        try {
+            const initialProducts = await wp.apiFetch({ path: fullPath, method: 'GET' });
+            currentProducts = initialProducts; // Guardar como productos actuales
+            displayResults(currentProducts); // Mostrar en la lista
+            console.log('Productos iniciales cargados:', initialProducts);
+        } catch (error) {
+            console.error('Error al cargar productos iniciales:', error);
+            let errorMessage = 'Error al cargar productos iniciales.';
+            if (error.message) errorMessage += ` Detalles: ${error.message}`;
+            resultsList.innerHTML = `<li class="error-message">${errorMessage}</li>`;
+            // Mostrar SweetAlert de error si está disponible
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({ icon: 'error', title: pos2025_pos_params.swal_error_title || 'Error', text: errorMessage });
+            }
+        } finally {
+             if (productSearchSpinner) productSearchSpinner.classList.remove('is-active');
+        }
+    }
+
     // =========================================================================
-    // Funciones de Gestión de Clientes (Integradas)
+    // Funciones de Gestión de Clientes (Búsqueda, Selección, Formulario - Modificadas para Swal)
     // =========================================================================
 
     /**
@@ -422,11 +487,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
         customerSpinner.classList.add('is-active');
         customerList.innerHTML = `<li>${pos2025_pos_params.text_loading || 'Buscando...'}</li>`;
-        // Opcional: Ocultar selección previa mientras busca
-        // if (selectedCustomerDiv) selectedCustomerDiv.style.display = 'none';
 
         const apiRoute = '/pos2025/v1/customers';
-        const queryParams = new URLSearchParams({ role: 'customer', per_page: 5, page: page }); // Limitar a 5 resultados por defecto
+        const queryParams = new URLSearchParams({ role: 'customer', per_page: 5, page: page });
         const trimmedSearch = searchTerm.trim();
         if (trimmedSearch) queryParams.set('search', trimmedSearch);
         const fullPath = `${apiRoute}?${queryParams.toString()}`;
@@ -435,13 +498,17 @@ document.addEventListener('DOMContentLoaded', function() {
         try {
             const customers = await wp.apiFetch({ path: fullPath, method: 'GET' });
             console.log(`${CUST_DEBUG_PREFIX} Customers received:`, customers);
-            currentCustomers = customers; // Guardar resultados
+            currentCustomers = customers;
             displayCustomerResults(currentCustomers);
         } catch (error) {
             console.error(`${CUST_DEBUG_PREFIX} Error al buscar clientes:`, error);
             let errorMsg = 'Error al buscar clientes.';
             if (error.message) errorMsg += ` Detalles: ${error.message}`;
             customerList.innerHTML = `<li class="error-message">${errorMsg}</li>`;
+            // Mostrar SweetAlert de error
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({ icon: 'error', title: pos2025_pos_params.swal_error_title || 'Error', text: errorMsg });
+            }
         } finally {
             customerSpinner.classList.remove('is-active');
             console.log(`${CUST_DEBUG_PREFIX} searchCustomers() finished.`);
@@ -458,7 +525,7 @@ document.addEventListener('DOMContentLoaded', function() {
              console.error(`${CUST_DEBUG_PREFIX} displayCustomerResults: customerList element is null.`);
              return;
         }
-        customerList.innerHTML = ''; // Limpiar siempre antes de mostrar
+        customerList.innerHTML = '';
 
         if (!Array.isArray(customers) || customers.length === 0) {
             console.log(`${CUST_DEBUG_PREFIX} No customers found or invalid data.`);
@@ -468,11 +535,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
         customers.forEach(customer => {
             const listItem = document.createElement('li');
-            // Estilos básicos para legibilidad
-            listItem.style.cssText = 'padding: 8px; border-bottom: 1px solid #eee; overflow: hidden; clear: both; cursor: pointer;'; // Añadir cursor pointer
-            listItem.dataset.customerId = customer.id; // Guardar ID para selección directa
+            listItem.style.cssText = 'padding: 8px; border-bottom: 1px solid #eee; overflow: hidden; clear: both; cursor: pointer;';
+            listItem.dataset.customerId = customer.id;
 
-            // Usar textContent para seguridad básica contra XSS en nombres/emails
             const nameSpan = document.createElement('span');
             nameSpan.className = 'customer-name';
             nameSpan.style.marginRight = '5px';
@@ -500,33 +565,39 @@ document.addEventListener('DOMContentLoaded', function() {
 
     /**
      * Maneja la selección de un cliente desde la lista de resultados (clic en botón o li).
+     * Guarda el objeto completo del cliente seleccionado.
      * @param {string|number} customerId - El ID del cliente seleccionado.
      */
     function selectCustomer(customerId) {
         console.log(`${CUST_DEBUG_PREFIX} selectCustomer() called for ID: ${customerId}`);
-        const customer = currentCustomers.find(c => c.id == customerId); // Usar == para comparación flexible (string/number)
+        const customer = currentCustomers.find(c => c.id == customerId) || (currentSelectedCustomerObject && currentSelectedCustomerObject.id == customerId ? currentSelectedCustomerObject : null);
 
         if (!customer) {
-            console.error(`${CUST_DEBUG_PREFIX} selectCustomer: Cliente con ID ${customerId} no encontrado en currentCustomers.`);
+            console.error(`${CUST_DEBUG_PREFIX} selectCustomer: Cliente con ID ${customerId} no encontrado.`);
+            // Mostrar SweetAlert de error
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({ icon: 'error', title: pos2025_pos_params.swal_error_title || 'Error', text: `No se encontraron los datos para el cliente ID ${customerId}.` });
+            }
             return;
         }
-        if (!selectedCustomerInfoSpan || !selectedCustomerDiv || !customerList || !customerSearchInput) {
-            console.error(`${CUST_DEBUG_PREFIX} selectCustomer: Faltan elementos DOM esenciales (infoSpan, selectedDiv, list, searchInput).`);
+        if (!selectedCustomerInfoSpan || !selectedCustomerDiv || !customerList || !customerSearchInput || !editCustomerButton) {
+            console.error(`${CUST_DEBUG_PREFIX} selectCustomer: Faltan elementos DOM esenciales (infoSpan, selectedDiv, list, searchInput, editButton).`);
             return;
         }
 
         selectedCustomerId = customer.id;
-        // Usar textContent para seguridad
+        currentSelectedCustomerObject = customer;
+
         const displayName = customer.display_name || `${customer.first_name || ''} ${customer.last_name || ''}`.trim() || customer.username;
         const displayEmail = customer.email || 'N/A';
         selectedCustomerInfoSpan.textContent = `${displayName} (${displayEmail})`;
 
-        selectedCustomerDiv.style.display = 'block'; // Mostrar la info del seleccionado
-        customerList.innerHTML = ''; // Limpiar resultados de búsqueda
-        customerSearchInput.value = ''; // Limpiar campo de búsqueda
-        console.log(`${CUST_DEBUG_PREFIX} Cliente seleccionado: ID ${selectedCustomerId}, Nombre: ${selectedCustomerInfoSpan.textContent}`);
+        selectedCustomerDiv.style.display = 'block';
+        editCustomerButton.style.display = 'inline-block';
+        customerList.innerHTML = '';
+        customerSearchInput.value = '';
+        console.log(`${CUST_DEBUG_PREFIX} Cliente seleccionado:`, currentSelectedCustomerObject);
 
-        // Actualizar estado del botón checkout
         updateCheckoutButtonState();
     }
 
@@ -535,18 +606,19 @@ document.addEventListener('DOMContentLoaded', function() {
      */
     function clearCustomerSelection() {
         console.log(`${CUST_DEBUG_PREFIX} clearCustomerSelection() called.`);
-        if (!selectedCustomerDiv || !selectedCustomerInfoSpan || !customerSearchInput || !customerList) {
-            console.error(`${CUST_DEBUG_PREFIX} clearCustomerSelection: Faltan elementos DOM esenciales (selectedDiv, infoSpan, searchInput, list).`);
+        if (!selectedCustomerDiv || !selectedCustomerInfoSpan || !customerSearchInput || !customerList || !editCustomerButton) {
+            console.error(`${CUST_DEBUG_PREFIX} clearCustomerSelection: Faltan elementos DOM esenciales (selectedDiv, infoSpan, searchInput, list, editButton).`);
             return;
         }
         selectedCustomerId = null;
-        selectedCustomerDiv.style.display = 'none'; // Ocultar info del seleccionado
-        selectedCustomerInfoSpan.textContent = ''; // Limpiar texto
-        customerSearchInput.value = ''; // Limpiar campo de búsqueda
-        customerList.innerHTML = ''; // Limpiar resultados (por si acaso)
+        currentSelectedCustomerObject = null;
+        selectedCustomerDiv.style.display = 'none';
+        editCustomerButton.style.display = 'none';
+        selectedCustomerInfoSpan.textContent = '';
+        customerSearchInput.value = '';
+        customerList.innerHTML = '';
         console.log(`${CUST_DEBUG_PREFIX} Selección de cliente eliminada.`);
 
-        // Actualizar estado del botón checkout
         updateCheckoutButtonState();
     }
 
@@ -556,7 +628,6 @@ document.addEventListener('DOMContentLoaded', function() {
      */
     function handleCustomerListClick(event) {
         const target = event.target;
-        // Buscar el botón 'Seleccionar' o el propio 'li'
         const selectButton = target.closest('.select-customer-button');
         const listItem = target.closest('li[data-customer-id]');
 
@@ -564,15 +635,204 @@ document.addEventListener('DOMContentLoaded', function() {
             const customerId = selectButton.dataset.customerId;
             console.log(`${CUST_DEBUG_PREFIX} Botón Seleccionar Cliente CLICADO para ID: ${customerId}`);
             selectCustomer(customerId);
-        } else if (listItem && !selectButton) { // Si se hizo clic en el LI pero no en el botón
+        } else if (listItem && !selectButton) {
             const customerId = listItem.dataset.customerId;
             console.log(`${CUST_DEBUG_PREFIX} Clic en LI de Cliente detectado para ID: ${customerId}`);
             selectCustomer(customerId);
         }
     }
 
+    /**
+     * Muestra el formulario para añadir o editar un cliente.
+     * @param {string} mode - 'add' o 'edit'.
+     * @param {object|null} customerData - Datos del cliente para rellenar en modo 'edit'.
+     */
+    function showCustomerForm(mode = 'add', customerData = null) {
+        console.log(`${CUST_DEBUG_PREFIX} showCustomerForm() called. Mode: ${mode}`, customerData);
+        if (!customerFormContainer || !customerDisplayArea || !customerFormTitle || !customerIdInput || !customerFirstNameInput || !customerLastNameInput || !customerEmailInput || !customerPhoneInput || !customerFormNotice) {
+            console.error(`${CUST_DEBUG_PREFIX} showCustomerForm: Faltan elementos DOM del formulario.`);
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({ icon: 'error', title: pos2025_pos_params.swal_error_title || 'Error', text: 'Faltan elementos del formulario de cliente.' });
+            }
+            return;
+        }
+
+        customerDisplayArea.style.display = 'none';
+        customerFormContainer.style.display = 'block';
+        customerFormNotice.textContent = '';
+        customerFormNotice.style.color = 'red';
+
+        if (mode === 'add') {
+            customerFormTitle.textContent = pos2025_pos_params.text_add_customer_title || 'Añadir Nuevo Cliente';
+            customerIdInput.value = '';
+            customerFirstNameInput.value = '';
+            customerLastNameInput.value = '';
+            customerEmailInput.value = '';
+            customerPhoneInput.value = '';
+            console.log(`${CUST_DEBUG_PREFIX} Formulario preparado para añadir.`);
+        } else if (mode === 'edit') {
+            if (!customerData || !customerData.id) {
+                console.error(`${CUST_DEBUG_PREFIX} showCustomerForm: Faltan datos del cliente para editar.`);
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire({
+                        icon: 'error',
+                        title: pos2025_pos_params.swal_error_title || 'Error',
+                        text: pos2025_pos_params.text_customer_not_found_edit || 'Error: Datos del cliente no encontrados para editar.'
+                    });
+                }
+                hideCustomerForm();
+                return;
+            }
+            customerFormTitle.textContent = pos2025_pos_params.text_edit_customer_title || 'Editar Cliente';
+            customerIdInput.value = customerData.id;
+            customerFirstNameInput.value = customerData.first_name || '';
+            customerLastNameInput.value = customerData.last_name || '';
+            customerEmailInput.value = customerData.email || '';
+            customerPhoneInput.value = customerData.phone || '';
+            console.log(`${CUST_DEBUG_PREFIX} Formulario preparado para editar cliente ID: ${customerData.id}`);
+        }
+        customerFirstNameInput.focus();
+    }
+
+    /**
+     * Oculta el formulario de cliente y muestra el área de búsqueda/seleccionado.
+     */
+    function hideCustomerForm() {
+        console.log(`${CUST_DEBUG_PREFIX} hideCustomerForm() called.`);
+        if (!customerFormContainer || !customerDisplayArea || !customerFormNotice || !customerIdInput) {
+             console.error(`${CUST_DEBUG_PREFIX} hideCustomerForm: Faltan elementos DOM del formulario.`);
+             return;
+        }
+        customerFormContainer.style.display = 'none';
+        customerDisplayArea.style.display = 'block';
+        customerIdInput.value = '';
+        customerFirstNameInput.value = '';
+        customerLastNameInput.value = '';
+        customerEmailInput.value = '';
+        customerPhoneInput.value = '';
+        customerFormNotice.textContent = '';
+        console.log(`${CUST_DEBUG_PREFIX} Formulario ocultado.`);
+    }
+
+    /**
+     * Valida el formulario de cliente (actualmente solo email).
+     * @returns {boolean} True si es válido, False si no.
+     */
+    function validateCustomerForm() {
+        console.log(`${CUST_DEBUG_PREFIX} validateCustomerForm() called.`);
+        customerFormNotice.textContent = '';
+
+        const email = customerEmailInput.value.trim();
+        if (!email) {
+            const message = pos2025_pos_params.text_fill_required_fields || 'Por favor, completa los campos requeridos (*).';
+            customerFormNotice.textContent = message;
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({ icon: 'warning', title: pos2025_pos_params.swal_warning_title || 'Atención', text: message });
+            }
+            customerEmailInput.focus();
+            console.warn(`${CUST_DEBUG_PREFIX} Validación fallida: Email vacío.`);
+            return false;
+        }
+
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+            const message = pos2025_pos_params.text_invalid_email || 'Por favor, introduce un correo electrónico válido.';
+            customerFormNotice.textContent = message;
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({ icon: 'warning', title: pos2025_pos_params.swal_warning_title || 'Atención', text: message });
+            }
+            customerEmailInput.focus();
+            console.warn(`${CUST_DEBUG_PREFIX} Validación fallida: Email inválido.`);
+            return false;
+        }
+
+        console.log(`${CUST_DEBUG_PREFIX} Validación de formulario OK.`);
+        return true;
+    }
+
+    /**
+     * Maneja el guardado (creación o actualización) de un cliente.
+     */
+    async function handleSaveCustomer() {
+        console.log(`${CUST_DEBUG_PREFIX} handleSaveCustomer() called.`);
+        if (!validateCustomerForm()) {
+            return; // La validación ya muestra Swal
+        }
+
+        if (customerSaveSpinner) customerSaveSpinner.classList.add('is-active');
+        if (saveCustomerButton) saveCustomerButton.disabled = true;
+        if (cancelCustomerButton) cancelCustomerButton.disabled = true;
+        customerFormNotice.textContent = pos2025_pos_params.text_saving || 'Guardando...';
+        customerFormNotice.style.color = '#555';
+
+        const customerData = {
+            first_name: customerFirstNameInput.value.trim(),
+            last_name: customerLastNameInput.value.trim(),
+            email: customerEmailInput.value.trim(),
+            phone: customerPhoneInput.value.trim(),
+        };
+
+        const customerId = customerIdInput.value;
+        let method, path;
+
+        if (customerId) { method = 'PUT'; path = `/pos2025/v1/customers/${customerId}`; }
+        else { method = 'POST'; path = '/pos2025/v1/customers'; }
+        console.log(`${CUST_DEBUG_PREFIX} Datos a enviar:`, customerData);
+
+        try {
+            const savedCustomer = await wp.apiFetch({ path: path, method: method, data: customerData });
+            console.log(`${CUST_DEBUG_PREFIX} Cliente guardado con éxito:`, savedCustomer);
+
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    icon: 'success',
+                    title: pos2025_pos_params.swal_success_title || '¡Éxito!',
+                    text: pos2025_pos_params.text_customer_saved || 'Cliente guardado correctamente.',
+                    timer: 1500,
+                    showConfirmButton: false
+                });
+            } else {
+                // Fallback si Swal no está
+                customerFormNotice.textContent = pos2025_pos_params.text_customer_saved || 'Cliente guardado correctamente.';
+                customerFormNotice.style.color = 'green';
+            }
+
+
+            currentSelectedCustomerObject = savedCustomer;
+            selectCustomer(savedCustomer.id);
+
+            setTimeout(() => {
+                hideCustomerForm();
+            }, 1500); // Ocultar después del timer de Swal (o un tiempo similar si no hay Swal)
+
+        } catch (error) {
+            console.error(`${CUST_DEBUG_PREFIX} Error al guardar cliente:`, error);
+            let errorMessage = pos2025_pos_params.text_error || 'Error';
+            if (error.message) errorMessage += `: ${error.message}`;
+            else if (error.responseJSON && error.responseJSON.message) errorMessage += `: ${error.responseJSON.message}`;
+            else errorMessage += ': Ocurrió un error desconocido.';
+            if (error.code) errorMessage += ` (Código: ${error.code})`;
+
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    icon: 'error',
+                    title: pos2025_pos_params.swal_error_title || 'Error',
+                    text: errorMessage
+                });
+            }
+            customerFormNotice.textContent = errorMessage;
+            customerFormNotice.style.color = 'red';
+
+        } finally {
+            if (customerSaveSpinner) customerSaveSpinner.classList.remove('is-active');
+            if (saveCustomerButton) saveCustomerButton.disabled = false;
+            if (cancelCustomerButton) cancelCustomerButton.disabled = false;
+            console.log(`${CUST_DEBUG_PREFIX} handleSaveCustomer() finished.`);
+        }
+    }
+
     // =========================================================================
-    // Funciones de Checkout y Pago (Modificadas)
+    // Funciones de Checkout y Pago (Modificadas para Swal)
     // =========================================================================
 
     /**
@@ -587,17 +847,16 @@ document.addEventListener('DOMContentLoaded', function() {
         const apiRoute = '/pos2025/v1/payment-gateways';
         try {
             const gateways = await wp.apiFetch({ path: apiRoute, method: 'GET' });
-            paymentGatewaySelect.innerHTML = '<option value="">-- Selecciona un método --</option>'; // Opción por defecto.
+            paymentGatewaySelect.innerHTML = '<option value="">-- Selecciona un método --</option>';
 
             if (gateways && gateways.length > 0) {
-                // Añadir cada pasarela como una opción en el select.
                 gateways.forEach(gateway => {
                     const option = document.createElement('option');
                     option.value = gateway.id;
                     option.textContent = gateway.title;
                     paymentGatewaySelect.appendChild(option);
                 });
-                paymentGatewaySelect.disabled = false; // Habilitar select.
+                paymentGatewaySelect.disabled = false;
                 console.log('Métodos de pago cargados.');
             } else {
                 paymentGatewaySelect.innerHTML = '<option value="">-- No hay métodos disponibles --</option>';
@@ -606,9 +865,13 @@ document.addEventListener('DOMContentLoaded', function() {
         } catch (error) {
             console.error('Error al cargar métodos de pago:', error);
             paymentGatewaySelect.innerHTML = '<option value="">-- Error al cargar --</option>';
+            // Mostrar SweetAlert de error
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({ icon: 'error', title: pos2025_pos_params.swal_error_title || 'Error', text: `Error al cargar métodos de pago: ${error.message || ''}` });
+            }
         } finally {
             if (gatewaySpinner) gatewaySpinner.classList.remove('is-active');
-            updateCheckoutButtonState(); // Actualizar estado del botón de pago.
+            updateCheckoutButtonState();
         }
     }
 
@@ -620,29 +883,24 @@ document.addEventListener('DOMContentLoaded', function() {
         if (subscriptionTermsDiv) {
             subscriptionTermsDiv.style.display = (selectedType === 'subscription') ? 'block' : 'none';
         }
-        updateCheckoutButtonState(); // Actualizar botón, ya que la selección de cliente puede ser requerida para 'credit'.
+        updateCheckoutButtonState();
     }
 
     /**
      * Habilita o deshabilita el botón "Completar Venta" según las condiciones actuales.
-     * Condiciones: Carrito no vacío, método de pago seleccionado.
-     * Si el tipo de venta es 'credit', también requiere un cliente seleccionado.
      */
     function updateCheckoutButtonState() {
         const cartHasItems = cart.length > 0;
         const paymentMethodSelected = paymentGatewaySelect && paymentGatewaySelect.value !== '';
         const currentSaleType = document.querySelector('input[name="pos_sale_type"]:checked')?.value;
 
-        // Condición base para habilitar: tener items y método de pago.
         let enableButton = cartHasItems && paymentMethodSelected;
 
-        // Requisito adicional: Si es venta a crédito, se necesita un cliente.
-        if (currentSaleType === 'credit' && !selectedCustomerId) {
+        if ((currentSaleType === 'credit' || currentSaleType === 'subscription') && !selectedCustomerId) {
             enableButton = false;
-            console.log(`${CUST_DEBUG_PREFIX} updateCheckoutButtonState: Botón deshabilitado (venta a crédito requiere cliente).`);
+            console.log(`${CUST_DEBUG_PREFIX} updateCheckoutButtonState: Botón deshabilitado (venta ${currentSaleType} requiere cliente).`);
         }
 
-        // Aplicar el estado al botón.
         if (checkoutButton) {
             checkoutButton.disabled = !enableButton;
         }
@@ -657,23 +915,23 @@ document.addEventListener('DOMContentLoaded', function() {
         console.log('Iniciando proceso de checkout...');
         const checkoutSpinner = checkoutButton.parentElement.querySelector('.spinner');
 
-        // --- 1. Validaciones Previas ---
+        // --- 1. Validaciones Previas (Usando Swal) ---
         if (cart.length === 0) {
-            alert('El carrito está vacío.');
+            if (typeof Swal !== 'undefined') Swal.fire({ icon: 'warning', title: pos2025_pos_params.swal_warning_title || 'Atención', text: pos2025_pos_params.swal_cart_empty || 'El carrito está vacío.' });
             return;
         }
         const selectedGatewayId = paymentGatewaySelect.value;
         if (!selectedGatewayId) {
-            alert('Por favor, selecciona un método de pago.');
+            if (typeof Swal !== 'undefined') Swal.fire({ icon: 'warning', title: pos2025_pos_params.swal_warning_title || 'Atención', text: pos2025_pos_params.swal_select_payment || 'Por favor, selecciona un método de pago.' });
             paymentGatewaySelect.focus();
             return;
         }
         const currentSaleType = document.querySelector('input[name="pos_sale_type"]:checked').value;
 
-        // Validación específica para venta a crédito
-        if (currentSaleType === 'credit' && !selectedCustomerId) {
-            alert('Para ventas a crédito, por favor, busca y selecciona un cliente.');
-            customerSearchInput.focus(); // Enfocar en la búsqueda de cliente
+        if ((currentSaleType === 'credit' || currentSaleType === 'subscription') && !selectedCustomerId) {
+            const message = (pos2025_pos_params.swal_select_customer_for_type || 'Para ventas de tipo "%s", por favor, busca y selecciona un cliente.').replace('%s', currentSaleType);
+            if (typeof Swal !== 'undefined') Swal.fire({ icon: 'warning', title: pos2025_pos_params.swal_warning_title || 'Atención', text: message });
+            customerSearchInput.focus();
             return;
         }
 
@@ -687,35 +945,31 @@ document.addEventListener('DOMContentLoaded', function() {
             line_items: getCartItemsForAPI(),
             payment_method: selectedGatewayId,
             payment_method_title: paymentGatewaySelect.options[paymentGatewaySelect.selectedIndex].text,
-            customer_id: selectedCustomerId || 0, // Enviar ID del cliente o 0 si no hay (invitado)
-            status: (currentSaleType === 'credit') ? 'on-hold' : 'processing', // Estado según tipo de venta
+            customer_id: selectedCustomerId || 0,
+            status: (currentSaleType === 'credit') ? 'on-hold' : 'processing',
             sale_type: currentSaleType,
             customer_note: customerNoteTextarea ? customerNoteTextarea.value.trim() : ''
         };
 
-        // Añadir datos de calendario si es tipo 'subscription'.
         if (currentSaleType === 'subscription') {
             const title = subscriptionTitleInput ? subscriptionTitleInput.value.trim() : '';
-            const startDate = subscriptionStartDateInput ? subscriptionStartDateInput.value : ''; // El backend espera 'subscription_start_date'
+            const startDate = subscriptionStartDateInput ? subscriptionStartDateInput.value : '';
             const color = subscriptionColorInput ? subscriptionColorInput.value : '#3a87ad';
 
-            // Validaciones para campos de calendario.
             if (!title) {
-                alert('Por favor, introduce un título para el evento de suscripción.');
+                if (typeof Swal !== 'undefined') Swal.fire({ icon: 'warning', title: pos2025_pos_params.swal_warning_title || 'Atención', text: pos2025_pos_params.swal_subscription_title_missing || 'Por favor, introduce un título para el evento.' });
                 checkoutButton.disabled = false; checkoutButton.textContent = 'Completar Venta';
                 if (checkoutSpinner) checkoutSpinner.classList.remove('is-active');
                 subscriptionTitleInput.focus();
                 return;
             }
             if (!startDate) {
-                alert('Por favor, selecciona una fecha para el evento.');
+                if (typeof Swal !== 'undefined') Swal.fire({ icon: 'warning', title: pos2025_pos_params.swal_warning_title || 'Atención', text: pos2025_pos_params.swal_subscription_date_missing || 'Por favor, selecciona una fecha para el evento.' });
                 checkoutButton.disabled = false; checkoutButton.textContent = 'Completar Venta';
                 if (checkoutSpinner) checkoutSpinner.classList.remove('is-active');
                 subscriptionStartDateInput.focus();
                 return;
             }
-
-            // Añadir datos al objeto orderData.
             orderData.subscription_title = title;
             orderData.subscription_start_date = startDate;
             orderData.subscription_color = color;
@@ -726,54 +980,59 @@ document.addEventListener('DOMContentLoaded', function() {
         // --- 4. Realizar la llamada a la API ---
         const apiRoute = '/pos2025/v1/orders';
         try {
-            // Usar wp.apiFetch para la llamada POST, incluyendo el nonce.
-            const response = await wp.apiFetch({
-                path: apiRoute,
-                method: 'POST',
-                data: orderData,
-                headers: { 'X-WP-Nonce': pos2025_pos_params.nonce }
-            });
+            const response = await wp.apiFetch({ path: apiRoute, method: 'POST', data: orderData });
 
-            // --- 5. Éxito ---
+            // --- 5. Éxito (Usando Swal) ---
             console.log('Pedido creado:', response);
-            alert(`¡Éxito! ${response.message || 'Operación completada.'} ID: ${response.order_id || ''}`);
-            // Limpiar la interfaz de usuario.
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    icon: 'success',
+                    title: pos2025_pos_params.swal_success_title || '¡Éxito!',
+                    text: `${response.message || pos2025_pos_params.swal_order_created_message || 'Pedido creado con éxito.'} (ID: ${response.order_id || 'N/A'})`,
+                });
+            } else {
+                alert(`¡Éxito! ${response.message || 'Pedido creado con éxito.'} ID: ${response.order_id || ''}`); // Fallback
+            }
+
+
+            // Limpiar UI
             clearCartUI();
-            clearCustomerSelection(); // Limpiar también la selección de cliente
-            // Resetear campos específicos de suscripción/evento.
+            clearCustomerSelection();
             if (subscriptionTitleInput) subscriptionTitleInput.value = '';
-            if (subscriptionStartDateInput) subscriptionStartDateInput.valueAsDate = new Date(); // Resetear a hoy.
-            if (subscriptionColorInput) subscriptionColorInput.value = '#3a87ad'; // Resetear a color por defecto.
-            if (customerNoteTextarea) customerNoteTextarea.value = ''; // Limpiar nota.
-            // Resetear tipo de venta a 'directa'.
+            if (subscriptionStartDateInput) subscriptionStartDateInput.valueAsDate = new Date();
+            if (subscriptionColorInput) subscriptionColorInput.value = '#3a87ad';
+            if (customerNoteTextarea) customerNoteTextarea.value = '';
             const directSaleRadio = document.querySelector('input[name="pos_sale_type"][value="direct"]');
             if (directSaleRadio) {
                 directSaleRadio.checked = true;
-                // Disparar evento change para ocultar campos de suscripción si estaban visibles.
                 directSaleRadio.dispatchEvent(new Event('change'));
             }
 
         } catch (error) {
-            // --- 6. Error ---
+            // --- 6. Error (Usando Swal) ---
             console.error('Error al crear pedido:', error);
-            // Mostrar mensaje de error al usuario.
             const errorMessage = error.message || (error.responseJSON && error.responseJSON.message) || 'Ocurrió un error desconocido.';
-            alert(`Error: ${errorMessage}`);
-            // Reactivar el botón para permitir reintentar.
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    icon: 'error',
+                    title: pos2025_pos_params.swal_error_title || 'Error',
+                    text: errorMessage
+                });
+            } else {
+                alert(`Error: ${errorMessage}`); // Fallback
+            }
+            // Reactivar botón
             checkoutButton.disabled = false;
 
         } finally {
-            // --- 7. Siempre (limpieza final) ---
-            if (checkoutSpinner) checkoutSpinner.classList.remove('is-active'); // Ocultar spinner.
-            // Restaurar texto del botón si el carrito aún tiene items (caso de error).
-            if (cart.length > 0) {
+            // --- 7. Siempre ---
+            if (checkoutSpinner) checkoutSpinner.classList.remove('is-active');
+            if (cart.length > 0 || checkoutButton.disabled === false) {
                  checkoutButton.textContent = 'Completar Venta';
             }
-            // Asegurar que el estado final del botón sea correcto.
-             updateCheckoutButtonState();
+            updateCheckoutButtonState();
         }
     }
-
 
     // =========================================================================
     // Event Listeners (Configuración Inicial)
@@ -781,79 +1040,72 @@ document.addEventListener('DOMContentLoaded', function() {
     // Añadir listeners a los elementos interactivos.
 
     // --- Búsqueda de Productos ---
-    if (searchButton) {
-        searchButton.addEventListener('click', () => searchProducts(searchInput.value));
-    }
-    if (searchInput) {
-        // Permitir búsqueda al presionar Enter en el input.
-        searchInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                e.preventDefault(); // Evitar envío de formulario si estuviera dentro de uno.
-                searchProducts(searchInput.value);
-            }
-        });
-    }
-    // Listener para añadir productos/variaciones al carrito (delegación en la lista de resultados).
-    if (resultsList) {
-        resultsList.addEventListener('click', handleAddProductClick);
-    }
+    if (searchButton) searchButton.addEventListener('click', () => searchProducts(searchInput.value));
+    if (searchInput) searchInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') { e.preventDefault(); searchProducts(searchInput.value); } });
+    if (resultsList) resultsList.addEventListener('click', handleAddProductClick);
 
-    // --- Gestión de Clientes (Integrada) ---
-    if (customerSearchButton) {
-        customerSearchButton.addEventListener('click', () => searchCustomers(customerSearchInput.value));
-        console.log(`${CUST_DEBUG_PREFIX} Listener añadido a customerSearchButton.`);
-    }
-    if (customerSearchInput) {
-        customerSearchInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                searchCustomers(customerSearchInput.value);
-            }
-        });
-        console.log(`${CUST_DEBUG_PREFIX} Listener añadido a customerSearchInput (Enter).`);
-    }
-    if (customerList) {
-        // Delegación para seleccionar cliente desde la lista
-        customerList.addEventListener('click', handleCustomerListClick);
-        console.log(`${CUST_DEBUG_PREFIX} Listener añadido a customerList (delegación).`);
-    }
-    if (clearCustomerButton) {
-        clearCustomerButton.addEventListener('click', clearCustomerSelection);
-        console.log(`${CUST_DEBUG_PREFIX} Listener añadido a clearCustomerButton.`);
-    }
+    // --- Gestión de Clientes (Búsqueda, Selección, Formulario) ---
+    if (customerSearchButton) customerSearchButton.addEventListener('click', () => searchCustomers(customerSearchInput.value));
+    if (customerSearchInput) customerSearchInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') { e.preventDefault(); searchCustomers(customerSearchInput.value); } });
+    if (customerList) customerList.addEventListener('click', handleCustomerListClick);
+    if (clearCustomerButton) clearCustomerButton.addEventListener('click', clearCustomerSelection);
+    if (showAddCustomerFormButton) showAddCustomerFormButton.addEventListener('click', () => showCustomerForm('add'));
+    if (editCustomerButton) editCustomerButton.addEventListener('click', () => {
+        if (currentSelectedCustomerObject) { showCustomerForm('edit', currentSelectedCustomerObject); }
+        else {
+            const errorMsg = pos2025_pos_params.text_customer_not_found_edit || 'Error: No se encontraron los datos del cliente para editar.';
+            console.error(`${CUST_DEBUG_PREFIX} Intento de editar sin datos de cliente seleccionados.`);
+            if (typeof Swal !== 'undefined') Swal.fire({ icon: 'error', title: pos2025_pos_params.swal_error_title || 'Error', text: errorMsg });
+        }
+    });
+    if (saveCustomerButton) saveCustomerButton.addEventListener('click', handleSaveCustomer);
+    if (cancelCustomerButton) cancelCustomerButton.addEventListener('click', () => {
+        // Opcional: Confirmación con Swal si hay cambios
+        // const hasChanges = customerFirstNameInput.value || customerLastNameInput.value || customerEmailInput.value || customerPhoneInput.value;
+        // if (hasChanges && typeof Swal !== 'undefined') {
+        //     Swal.fire({
+        //         title: '¿Cancelar?',
+        //         text: pos2025_pos_params.text_confirm_cancel || 'Los cambios no guardados se perderán.',
+        //         icon: 'warning',
+        //         showCancelButton: true,
+        //         confirmButtonText: 'Sí, cancelar',
+        //         cancelButtonText: 'No'
+        //     }).then((result) => {
+        //         if (result.isConfirmed) {
+        //             hideCustomerForm();
+        //         }
+        //     });
+        // } else {
+             hideCustomerForm(); // Cancelar directamente si no hay cambios o Swal no está
+        // }
+    });
 
     // --- Gestión del Carrito ---
     if (cartItemsList) {
-        // Delegación para botones +, -, x dentro de la lista del carrito.
         cartItemsList.addEventListener('click', handleCartActions);
-        // Listener para cambios directos en el input de cantidad.
-        cartItemsList.addEventListener('change', handleQuantityInputChange); // 'change' es más estándar que 'input' para inputs numéricos.
+        cartItemsList.addEventListener('change', handleQuantityInputChange);
     }
 
     // --- Opciones de Venta y Pago ---
-    if (saleTypeRadios) {
-        // Actualizar UI cuando cambia el tipo de venta.
-        saleTypeRadios.forEach(radio => radio.addEventListener('change', toggleSubscriptionTerms));
-    }
-    if (paymentGatewaySelect) {
-        // Actualizar estado del botón de checkout cuando cambia el método de pago.
-        paymentGatewaySelect.addEventListener('change', updateCheckoutButtonState);
-    }
+    if (saleTypeRadios) saleTypeRadios.forEach(radio => radio.addEventListener('change', toggleSubscriptionTerms));
+    if (paymentGatewaySelect) paymentGatewaySelect.addEventListener('change', updateCheckoutButtonState);
 
     // --- Botón Principal de Checkout ---
-    if (checkoutButton) {
-        checkoutButton.addEventListener('click', handleCheckout);
-    }
+    if (checkoutButton) checkoutButton.addEventListener('click', handleCheckout);
 
     // =========================================================================
     // Inicialización al Cargar la Página
     // =========================================================================
     // Ejecutar funciones necesarias al inicio.
 
-    loadPaymentGateways(); // Cargar métodos de pago disponibles.
-    displayCart(); // Mostrar estado inicial del carrito (vacío).
-    toggleSubscriptionTerms(); // Asegurar visibilidad correcta de campos de suscripción.
-    clearCustomerSelection(); // Asegurar que no haya cliente seleccionado al inicio.
+    loadPaymentGateways();
+    displayCart();
+    toggleSubscriptionTerms();
+    clearCustomerSelection();
+    hideCustomerForm();
+
+    // --- LLAMADA A LA NUEVA FUNCIÓN ---
+    loadInitialProducts(); // Cargar productos destacados al inicio.
 
     // Establecer fecha por defecto para el campo de fecha de suscripción/evento.
     if (subscriptionStartDateInput) {
@@ -864,34 +1116,49 @@ document.addEventListener('DOMContentLoaded', function() {
         customerNoteTextarea.value = '';
     }
 
-    // Nota: updateCheckoutButtonState() se llama dentro de displayCart(), loadPaymentGateways(),
-    // clearCustomerSelection() y toggleSubscriptionTerms(), por lo que el estado inicial del botón
-    // debería ser correcto (deshabilitado).
-
-    console.log('POS App Initialized.');
+    console.log('POS App Initialized with SweetAlert2 and Initial Products.');
 
 }); // Fin de DOMContentLoaded
 
 /**
  * Función global simple para formatear precios (si wc_price no está disponible).
- * Esta es una implementación muy básica.
- * @param {number} price
- * @returns {string}
+ * Esta es una implementación muy básica. Usa los parámetros localizados.
+ * @param {number|string} price - El precio a formatear.
+ * @returns {string} - El precio formateado con símbolo de moneda.
  */
 function wc_price(price) {
-    if (typeof pos2025_pos_params !== 'undefined') {
-        const decimals = pos2025_pos_params.price_decimals || 2;
-        const decimalSep = pos2025_pos_params.decimal_sep || '.';
-        const thousandSep = pos2025_pos_params.thousand_sep || ',';
-        const currencySymbol = pos2025_pos_params.currency_symbol || '$';
-        const format = pos2025_pos_params.price_format || '%1$s%2$s'; // %1$s = symbol, %2$s = price
+    try {
+        if (typeof pos2025_pos_params !== 'undefined') {
+            const decimals = parseInt(pos2025_pos_params.price_decimals || 2, 10);
+            const decimalSep = pos2025_pos_params.decimal_sep || '.';
+            const thousandSep = pos2025_pos_params.thousand_sep || ',';
+            const currencySymbol = pos2025_pos_params.currency_symbol || '$';
+            // Formato: %1$s = símbolo, %2$s = precio
+            const format = pos2025_pos_params.price_format || '%1$s%2$s';
 
-        let formattedPrice = parseFloat(price).toFixed(decimals);
-        // Separador de miles (simplificado, no maneja todos los casos)
-        formattedPrice = formattedPrice.replace('.', decimalSep);
-        // Añadir símbolo
-        return format.replace('%1$s', currencySymbol).replace('%2$s', formattedPrice);
+            let number = parseFloat(price);
+            if (isNaN(number)) {
+                console.warn('wc_price: Input price is not a valid number:', price);
+                number = 0;
+            }
+
+            // Formatear el número con decimales fijos
+            let formattedPrice = number.toFixed(decimals);
+
+            // Aplicar separador de miles (expresión regular básica)
+            let parts = formattedPrice.split('.');
+            parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, thousandSep);
+
+            // Reconstruir el precio con el separador decimal correcto
+            formattedPrice = parts.join(decimalSep);
+
+            // Aplicar el formato de moneda (símbolo antes/después)
+            return format.replace('%1$s', currencySymbol).replace('%2$s', formattedPrice);
+        }
+    } catch (e) {
+        console.error("Error in wc_price formatting:", e, "Input price:", price);
     }
-    // Fallback muy básico
-    return '$' + parseFloat(price).toFixed(2);
+    // Fallback muy básico si algo falla o no hay parámetros
+    const fallbackPrice = parseFloat(price);
+    return '$' + (isNaN(fallbackPrice) ? '0.00' : fallbackPrice.toFixed(2));
 }
