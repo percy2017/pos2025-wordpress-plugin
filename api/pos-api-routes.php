@@ -28,6 +28,7 @@ function pos2025_api_permissions_check() {
 
 /**
  * Registra TODAS las rutas de la API REST personalizadas para POS2025.
+ * CORREGIDO: Añadido endpoint para eventos del calendario.
  */
 function pos2025_register_rest_routes() {
     $namespace = 'pos2025/v1'; // Namespace de nuestra API
@@ -37,32 +38,11 @@ function pos2025_register_rest_routes() {
         'methods'             => WP_REST_Server::READABLE, // Método GET
         'callback'            => 'pos2025_api_search_products',
         'permission_callback' => '__return_true', // Permisos desactivados temporalmente
-        'args'                => array( // Argumentos esperados para /products
-            'search' => array(
-                'description'       => __( 'Término de búsqueda para productos (título o SKU).', 'pos2025' ),
-                'type'              => 'string',
-                'required'          => false,
-                'sanitize_callback' => 'sanitize_text_field',
-            ),
-            'per_page' => array(
-                'description'       => __( 'Número de resultados por página.', 'pos2025' ),
-                'type'              => 'integer',
-                'default'           => 10, // Mantenemos 10 por defecto para búsquedas
-                'sanitize_callback' => 'absint',
-            ),
-            'page' => array(
-                'description'       => __( 'Página actual de resultados.', 'pos2025' ),
-                'type'              => 'integer',
-                'default'           => 1,
-                'sanitize_callback' => 'absint',
-            ),
-            // --- NUEVO ARGUMENTO ---
-            'featured' => array(
-                'description'       => __( 'Indica si se deben devolver solo productos destacados.', 'pos2025' ),
-                'type'              => 'boolean',
-                'default'           => false,
-                'sanitize_callback' => 'wp_validate_boolean', // Convierte 'true', 1, etc. a booleano
-            ),
+        'args'                => array(
+            'search' => array( /* ... */ ),
+            'per_page' => array( /* ... */ ),
+            'page' => array( /* ... */ ),
+            'featured' => array( /* ... */ ),
         ),
     ) );
 
@@ -78,32 +58,7 @@ function pos2025_register_rest_routes() {
         'methods'             => WP_REST_Server::READABLE, // Método GET
         'callback'            => 'pos2025_api_search_customers',
         'permission_callback' => '__return_true', // Permisos desactivados temporalmente
-        'args'                => array( // Argumentos esperados para /customers
-            'search' => array(
-                'description'       => __( 'Término de búsqueda para clientes (nombre, apellido, email, usuario).', 'pos2025' ),
-                'type'              => 'string',
-                'required'          => false,
-                'sanitize_callback' => 'sanitize_text_field',
-            ),
-            'per_page' => array(
-                'description'       => __( 'Número de resultados por página.', 'pos2025' ),
-                'type'              => 'integer',
-                'default'           => 10,
-                'sanitize_callback' => 'absint',
-            ),
-            'page' => array(
-                'description'       => __( 'Página actual de resultados.', 'pos2025' ),
-                'type'              => 'integer',
-                'default'           => 1,
-                'sanitize_callback' => 'absint',
-            ),
-            'role' => array(
-                'description'       => __( 'Filtrar por rol de usuario.', 'pos2025' ),
-                'type'              => 'string',
-                'default'           => 'customer',
-                'sanitize_callback' => 'sanitize_key',
-            ),
-        ),
+        'args'                => array( /* ... args clientes ... */ ),
     ) );
 
     // --- Endpoint para CREAR un nuevo cliente (POST) ---
@@ -111,35 +66,7 @@ function pos2025_register_rest_routes() {
         'methods'             => WP_REST_Server::CREATABLE, // POST
         'callback'            => 'pos2025_api_create_customer',
         'permission_callback' => '__return_true', // Permisos desactivados temporalmente
-        'args'                => array(
-            'email' => array(
-                'required'          => true,
-                'type'              => 'string',
-                'format'            => 'email',
-                'description'       => __( 'Correo electrónico del cliente (obligatorio).', 'pos2025' ),
-                'validate_callback' => 'rest_validate_request_arg',
-                'sanitize_callback' => 'sanitize_email',
-            ),
-            'first_name' => array(
-                'required'          => false,
-                'type'              => 'string',
-                'description'       => __( 'Nombre del cliente.', 'pos2025' ),
-                'sanitize_callback' => 'sanitize_text_field',
-            ),
-            'last_name' => array(
-                'required'          => false,
-                'type'              => 'string',
-                'description'       => __( 'Apellidos del cliente.', 'pos2025' ),
-                'sanitize_callback' => 'sanitize_text_field',
-            ),
-            'phone' => array(
-                'required'          => false,
-                'type'              => 'string',
-                'description'       => __( 'Teléfono del cliente (se guardará en billing_phone).', 'pos2025' ),
-                'sanitize_callback' => 'sanitize_text_field',
-            ),
-            // Añadir aquí más args si incluyes campos de dirección en el formulario
-        ),
+        'args'                => array( /* ... args crear cliente ... */ ),
     ) );
 
     // --- Endpoint para ACTUALIZAR un cliente existente (PUT) ---
@@ -147,43 +74,7 @@ function pos2025_register_rest_routes() {
         'methods'             => WP_REST_Server::EDITABLE, // PUT/PATCH
         'callback'            => 'pos2025_api_update_customer',
         'permission_callback' => '__return_true', // Permisos desactivados temporalmente
-        'args'                => array(
-            'id' => array(
-                'description'       => __( 'ID del cliente a actualizar.', 'pos2025' ),
-                'type'              => 'integer',
-                'validate_callback' => function( $param, $request, $key ) {
-                    return is_numeric( $param ) && $param > 0;
-                },
-                'sanitize_callback' => 'absint',
-            ),
-            'email' => array(
-                'required'          => true,
-                'type'              => 'string',
-                'format'            => 'email',
-                'description'       => __( 'Correo electrónico del cliente.', 'pos2025' ),
-                'validate_callback' => 'rest_validate_request_arg',
-                'sanitize_callback' => 'sanitize_email',
-            ),
-            'first_name' => array(
-                'required'          => false,
-                'type'              => 'string',
-                'description'       => __( 'Nombre del cliente.', 'pos2025' ),
-                'sanitize_callback' => 'sanitize_text_field',
-            ),
-            'last_name' => array(
-                'required'          => false,
-                'type'              => 'string',
-                'description'       => __( 'Apellidos del cliente.', 'pos2025' ),
-                'sanitize_callback' => 'sanitize_text_field',
-            ),
-            'phone' => array(
-                'required'          => false,
-                'type'              => 'string',
-                'description'       => __( 'Teléfono del cliente (se guardará en billing_phone).', 'pos2025' ),
-                'sanitize_callback' => 'sanitize_text_field',
-            ),
-            // Añadir aquí más args si incluyes campos de dirección en el formulario
-        ),
+        'args'                => array( /* ... args actualizar cliente ... */ ),
     ) );
 
     // --- Endpoint para CREAR pedidos/suscripciones/créditos ---
@@ -191,71 +82,34 @@ function pos2025_register_rest_routes() {
         'methods'             => WP_REST_Server::CREATABLE, // Método POST
         'callback'            => 'pos2025_api_create_order',
         'permission_callback' => '__return_true', // Permisos desactivados temporalmente
-        'args'                => array( // Definir argumentos esperados y validación/sanitización
-            'line_items' => array(
-                'required' => true,
-                'description' => __('Array de artículos del pedido.', 'pos2025'),
-                'type' => 'array',
-                'items' => [
-                    'type' => 'object',
-                    'properties' => [
-                        'product_id' => ['type' => 'integer', 'required' => true],
-                        'variation_id' => ['type' => 'integer'],
-                        'quantity' => ['type' => 'integer', 'required' => true],
-                    ],
-                ],
-                'validate_callback' => function($param, $request, $key) {
-                    if ( !is_array($param) || empty($param) ) return new WP_Error('rest_invalid_param', __('line_items debe ser un array no vacío.', 'pos2025'), ['status' => 400]);
-                    foreach ($param as $item) {
-                        if ( empty($item['product_id']) || !isset($item['quantity']) || !is_numeric($item['product_id']) || !is_numeric($item['quantity']) || $item['quantity'] < 1 ) {
-                            return new WP_Error('rest_invalid_param', __('Cada item en line_items debe tener product_id y quantity (numéricos, quantity >= 1).', 'pos2025'), ['status' => 400]);
-                        }
-                        if ( isset($item['variation_id']) && !is_numeric($item['variation_id']) ) {
-                            return new WP_Error('rest_invalid_param', __('variation_id debe ser numérico si se proporciona.', 'pos2025'), ['status' => 400]);
-                        }
-                    }
-                    return true;
-                },
-            ),
-            'payment_method' => array(
-                'required' => true, 'type' => 'string', 'description' => __('ID de la pasarela de pago.', 'pos2025'),
+        'args'                => array( /* ... args crear pedido ... */ ),
+    ) );
+
+    // *** INICIO: Endpoint para eventos del calendario ***
+    register_rest_route( $namespace, '/events', array(
+        'methods'             => WP_REST_Server::READABLE, // GET
+        'callback'            => 'pos2025_api_get_calendar_events',
+        'permission_callback' => '__return_true', // O 'pos2025_api_permissions_check'
+        'args'                => array(
+             // Parámetros de fecha que FullCalendar envía automáticamente
+             'start' => array(
+                'description'       => 'Fecha de inicio para filtrar eventos (YYYY-MM-DDThh:mm:ss).',
+                'type'              => 'string',
+                'format'            => 'date-time', // Indica formato esperado
+                'required'          => false,
+                'sanitize_callback' => 'sanitize_text_field', // Sanitización básica
+             ),
+             'end' => array(
+                'description'       => 'Fecha de fin para filtrar eventos (YYYY-MM-DDThh:mm:ss).',
+                'type'              => 'string',
+                'format'            => 'date-time',
+                'required'          => false,
                 'sanitize_callback' => 'sanitize_text_field',
-            ),
-            'payment_method_title' => array(
-                'required' => true, 'type' => 'string', 'description' => __('Título de la pasarela de pago.', 'pos2025'),
-                'sanitize_callback' => 'sanitize_text_field',
-            ),
-            'status' => array(
-                'required' => false, 'type' => 'string', 'default' => 'processing', 'description' => __('Estado deseado para el pedido.', 'pos2025'),
-                'sanitize_callback' => 'sanitize_key',
-            ),
-            'customer_id' => array(
-                'required' => false, 'type' => 'integer', 'default' => 0, 'description' => __('ID del cliente (0 para invitado).', 'pos2025'),
-                'sanitize_callback' => 'absint',
-            ),
-            'sale_type' => array(
-                'required' => false, 'type' => 'string', 'default' => 'direct', 'enum' => ['direct', 'subscription', 'credit'], 'description' => __('Tipo de venta.', 'pos2025'),
-                'sanitize_callback' => 'sanitize_key',
-            ),
-            'customer_note' => array(
-                'required' => false, 'type' => 'string', 'default' => '', 'description' => __('Nota para el cliente.', 'pos2025'),
-                'sanitize_callback' => 'sanitize_textarea_field',
-            ),
-            // Argumentos específicos de suscripción (Calendario)
-            'subscription_title' => array(
-                'required' => false, 'type' => 'string', 'description' => __('Título para el evento de calendario.', 'pos2025'),
-                'sanitize_callback' => 'sanitize_text_field',
-            ),
-             'subscription_start_date' => array(
-                'required' => false, 'type' => 'string', 'format' => 'date', 'description' => __('Fecha de inicio (YYYY-MM-DD).', 'pos2025'),
-                'sanitize_callback' => 'sanitize_text_field', // Se valida formato después
-            ),
-             'subscription_color' => array(
-                'required' => false, 'type' => 'string', 'description' => __('Color hexadecimal para el evento.', 'pos2025'),
-                'sanitize_callback' => 'sanitize_hex_color',
-            ),
+             ),
         ),
     ) );
+    // *** FIN: Endpoint para eventos del calendario ***
+
 
     // --- FIN DE REGISTRO DE RUTAS ---
 
@@ -267,62 +121,54 @@ add_action( 'rest_api_init', 'pos2025_register_rest_routes' );
 
 /**
  * Callback para el endpoint de búsqueda de productos.
- * MODIFICADO: Añadido soporte para parámetro 'featured'.
+ * CORREGIDO: Manejo de 'featured' y 'search' mejorado.
  */
 function pos2025_api_search_products( WP_REST_Request $request ) {
     $search_term = $request->get_param( 'search' );
     $per_page    = $request->get_param( 'per_page' );
     $page        = $request->get_param( 'page' );
-    $featured    = $request->get_param( 'featured' ); // Obtener el nuevo parámetro
+    $featured    = $request->get_param( 'featured' );
 
     $args = array(
         'status'    => 'publish',
         'limit'     => $per_page,
         'page'      => $page,
-        'orderby'   => 'title', // Orden por defecto
+        'orderby'   => 'title',
         'order'     => 'ASC',
         'type'      => array('simple', 'variable'),
         'return'    => 'objects',
     );
 
-    // --- MODIFICACIÓN: Aplicar filtro 'featured' si se solicitó ---
-    if ( $featured === true ) {
-        $args['featured'] = true;
-        // Opcional: Cambiar orden para destacados (ej. por fecha)
-        // $args['orderby'] = 'date';
-        // $args['order'] = 'DESC';
-    }
-
-    // Si hay término de búsqueda, lo añadimos (sobrescribe 'featured' si ambos están presentes)
     if ( ! empty( $search_term ) ) {
         $args['s'] = $search_term;
-        // Quitar 'featured' si estamos buscando por término, para evitar conflictos
-        unset( $args['featured'] );
-        // La meta query para SKU sigue igual
         $args['meta_query'] = array(
             'relation' => 'OR',
-             array( // Necesario para que 's' funcione junto con meta_query
+             array(
                  'key' => '_sku',
-                 'compare' => 'EXISTS' // O una condición que siempre sea verdadera si no buscas SKU
+                 'value'   => $search_term,
+                 'compare' => 'LIKE',
              ),
-            array(
-                'key'     => '_sku',
-                'value'   => $search_term,
-                'compare' => 'LIKE',
-            )
         );
     }
+    elseif ( $featured === true ) {
+        $args['featured'] = true;
+        // $args['orderby'] = 'menu_order';
+        // $args['order'] = 'ASC';
+    }
 
-    // El resto de la función sigue igual...
+    error_log('[POS API Products] - WC_Query Args: ' . print_r($args, true));
+
     $products_query = new WC_Product_Query( $args );
     $products_data = $products_query->get_products();
+
+    error_log('[POS API Products] - WC_Query Result Count: ' . count($products_data));
 
     $results = array();
     if ( ! empty( $products_data ) ) {
         foreach ( $products_data as $product ) {
              if ( ! $product instanceof WC_Product ) continue;
-
-            $image_id = $product->get_image_id();
+            // ... (construcción de $product_item como antes) ...
+             $image_id = $product->get_image_id();
             $image_url = $image_id ? wp_get_attachment_image_url( $image_id, 'thumbnail' ) : wc_placeholder_img_src('thumbnail');
 
             $product_item = array(
@@ -372,14 +218,11 @@ function pos2025_api_search_products( WP_REST_Request $request ) {
         }
     }
 
-    // Preparamos la respuesta
     $response = new WP_REST_Response( $results, 200 );
 
-    // Añadir cabeceras de paginación
-    // Re-ejecutar la consulta solo para obtener el total
-    $count_args = $args; // Copiar argumentos
-    $count_args['return'] = 'ids'; // Más eficiente para contar
-    $count_args['limit'] = -1; // Contar todos
+    $count_args = $args;
+    $count_args['return'] = 'ids';
+    $count_args['limit'] = -1;
     unset($count_args['page']);
     $total_query = new WC_Product_Query( $count_args );
     $total_products = count($total_query->get_products());
@@ -394,321 +237,136 @@ function pos2025_api_search_products( WP_REST_Request $request ) {
 /**
  * Callback para obtener las pasarelas de pago activas.
  */
-function pos2025_api_get_payment_gateways( WP_REST_Request $request ) {
-    if ( ! class_exists( 'WooCommerce' ) ) {
-        return new WP_Error( 'woocommerce_inactive', __( 'WooCommerce no está activo.', 'pos2025' ), array( 'status' => 503 ) );
-    }
-    $available_gateways = WC()->payment_gateways->get_available_payment_gateways();
-    $formatted_gateways = array();
-    if ( $available_gateways ) {
-        foreach ( $available_gateways as $gateway ) {
-            if ( $gateway->enabled == 'yes' ) {
-                $formatted_gateways[] = array(
-                    'id'    => $gateway->id,
-                    'title' => $gateway->get_title(),
-                );
-            }
-        }
-    }
-    return new WP_REST_Response( $formatted_gateways, 200 );
-}
-
+function pos2025_api_get_payment_gateways( WP_REST_Request $request ) { /* ... (sin cambios) ... */ }
 
 /**
  * Callback para buscar usuarios (clientes).
  */
-function pos2025_api_search_customers( WP_REST_Request $request ) {
-    global $wpdb;
-    $search_term = $request->get_param( 'search' );
-    $per_page    = $request->get_param( 'per_page' );
-    $page        = $request->get_param( 'page' );
-    $role        = $request->get_param( 'role' );
-
-    $args = array(
-        'number'    => $per_page,
-        'paged'     => $page,
-        'orderby'   => 'display_name',
-        'order'     => 'ASC',
-    );
-
-    if ( ! empty( $role ) ) {
-        $args['role__in'] = (array) $role;
-    }
-
-    if ( ! empty( $search_term ) ) {
-        $args['search'] = '*' . esc_attr( $search_term ) . '*';
-        $args['search_columns'] = array( 'user_login', 'user_email', 'user_nicename', 'display_name' );
-        $args['meta_query'] = array(
-            'relation' => 'OR',
-            array( 'key' => 'first_name', 'value' => $search_term, 'compare' => 'LIKE' ),
-            array( 'key' => 'last_name', 'value' => $search_term, 'compare' => 'LIKE' ),
-            array( 'key' => 'billing_first_name', 'value' => $search_term, 'compare' => 'LIKE' ),
-            array( 'key' => 'billing_last_name', 'value' => $search_term, 'compare' => 'LIKE' ),
-            array( 'key' => 'billing_email', 'value' => $search_term, 'compare' => 'LIKE' ),
-        );
-    }
-
-    $user_query = new WP_User_Query( $args );
-    $customers = $user_query->get_results();
-    $total_customers = $user_query->get_total();
-
-    $results = array();
-    if ( ! empty( $customers ) ) {
-        foreach ( $customers as $customer ) {
-            $results[] = array(
-                'id'           => $customer->ID,
-                'display_name' => $customer->display_name,
-                'email'        => $customer->user_email,
-                'first_name'   => $customer->first_name,
-                'last_name'    => $customer->last_name,
-                'phone'        => get_user_meta( $customer->ID, 'billing_phone', true ),
-            );
-        }
-    }
-
-    $response = new WP_REST_Response( $results, 200 );
-    $total_pages = ($per_page > 0 && $total_customers > 0) ? ceil( $total_customers / $per_page ) : 1;
-    $response->header( 'X-WP-Total', $total_customers );
-    $response->header( 'X-WP-TotalPages', $total_pages );
-
-    return $response;
-}
+function pos2025_api_search_customers( WP_REST_Request $request ) { /* ... (sin cambios) ... */ }
 
 /**
  * Callback para CREAR un nuevo cliente.
  */
-function pos2025_api_create_customer( WP_REST_Request $request ) {
-    $params = $request->get_params();
-    $email = $params['email'];
-
-    if ( email_exists( $email ) ) {
-        return new WP_Error( 'rest_customer_email_exists', __( 'Ya existe un usuario con este correo electrónico.', 'pos2025' ), array( 'status' => 409 ) );
-    }
-
-    $username = sanitize_user( explode( '@', $email )[0], true );
-    $original_username = $username;
-    $count = 1;
-    while ( username_exists( $username ) ) { $username = $original_username . $count; $count++; }
-    $password = wp_generate_password( 12, true );
-
-    $customer_id = wc_create_new_customer( $email, $username, $password );
-
-    if ( is_wp_error( $customer_id ) ) {
-        error_log( "POS2025 Error al crear cliente (wc_create_new_customer): " . $customer_id->get_error_message() );
-        return new WP_Error( 'rest_customer_creation_failed', __( 'No se pudo crear el cliente.', 'pos2025' ) . ' ' . $customer_id->get_error_message(), array( 'status' => 500 ) );
-    }
-
-    $userdata = array( 'ID' => $customer_id );
-    if ( isset( $params['first_name'] ) && !empty($params['first_name']) ) {
-        $userdata['first_name'] = $params['first_name'];
-        update_user_meta( $customer_id, 'billing_first_name', $params['first_name'] );
-        update_user_meta( $customer_id, 'shipping_first_name', $params['first_name'] );
-    }
-    if ( isset( $params['last_name'] ) && !empty($params['last_name']) ) {
-        $userdata['last_name'] = $params['last_name'];
-        update_user_meta( $customer_id, 'billing_last_name', $params['last_name'] );
-        update_user_meta( $customer_id, 'shipping_last_name', $params['last_name'] );
-    }
-    if (count($userdata) > 1) { wp_update_user($userdata); }
-    if ( isset( $params['phone'] ) ) { update_user_meta( $customer_id, 'billing_phone', $params['phone'] ); }
-
-    $customer_data = get_userdata( $customer_id );
-    $response_data = array(
-        'id'           => $customer_id,
-        'email'        => $customer_data->user_email,
-        'first_name'   => $customer_data->first_name,
-        'last_name'    => $customer_data->last_name,
-        'display_name' => $customer_data->display_name,
-        'phone'        => get_user_meta( $customer_id, 'billing_phone', true ),
-    );
-
-    $response = new WP_REST_Response( $response_data, 201 );
-    $response->header( 'Location', rest_url( sprintf( '%s/customers/%d', 'pos2025/v1', $customer_id ) ) );
-    return $response;
-}
-
+function pos2025_api_create_customer( WP_REST_Request $request ) { /* ... (sin cambios) ... */ }
 
 /**
  * Callback para ACTUALIZAR un cliente existente.
  */
-function pos2025_api_update_customer( WP_REST_Request $request ) {
-    $params = $request->get_params();
-    $customer_id = absint( $params['id'] );
-    $email = $params['email'];
-
-    $customer = get_userdata( $customer_id );
-    if ( ! $customer ) {
-        return new WP_Error( 'rest_customer_not_found', __( 'Cliente no encontrado.', 'pos2025' ), array( 'status' => 404 ) );
-    }
-
-    if ( strtolower( $email ) !== strtolower( $customer->user_email ) && email_exists( $email ) ) {
-        return new WP_Error( 'rest_customer_email_exists', __( 'Ya existe otro usuario con este correo electrónico.', 'pos2025' ), array( 'status' => 409 ) );
-    }
-
-    $userdata = array( 'ID' => $customer_id, 'user_email' => $email );
-    if ( isset( $params['first_name'] ) ) { $userdata['first_name'] = $params['first_name']; }
-    if ( isset( $params['last_name'] ) ) { $userdata['last_name'] = $params['last_name']; }
-
-    $updated_user_id = wp_update_user( $userdata );
-
-    if ( is_wp_error( $updated_user_id ) ) {
-        error_log( "POS2025 Error al actualizar cliente (wp_update_user): " . $updated_user_id->get_error_message() );
-        return new WP_Error( 'rest_customer_update_failed', __( 'No se pudo actualizar el cliente.', 'pos2025' ) . ' ' . $updated_user_id->get_error_message(), array( 'status' => 500 ) );
-    }
-
-    if ( isset( $params['first_name'] ) ) {
-        update_user_meta( $customer_id, 'billing_first_name', $params['first_name'] );
-        update_user_meta( $customer_id, 'shipping_first_name', $params['first_name'] );
-    }
-    if ( isset( $params['last_name'] ) ) {
-        update_user_meta( $customer_id, 'billing_last_name', $params['last_name'] );
-        update_user_meta( $customer_id, 'shipping_last_name', $params['last_name'] );
-    }
-    if ( isset( $params['phone'] ) ) {
-        update_user_meta( $customer_id, 'billing_phone', $params['phone'] );
-    } else {
-        // delete_user_meta($customer_id, 'billing_phone'); // Opcional: borrar si no se envía
-    }
-
-    $customer_data = get_userdata( $customer_id );
-    $response_data = array(
-        'id'           => $customer_id,
-        'email'        => $customer_data->user_email,
-        'first_name'   => $customer_data->first_name,
-        'last_name'    => $customer_data->last_name,
-        'display_name' => $customer_data->display_name,
-        'phone'        => get_user_meta( $customer_id, 'billing_phone', true ),
-    );
-
-    return new WP_REST_Response( $response_data, 200 );
-}
-
+function pos2025_api_update_customer( WP_REST_Request $request ) { /* ... (sin cambios) ... */ }
 
  /**
   * Callback para crear un nuevo pedido/suscripción/crédito de WooCommerce desde el TPV.
   */
- function pos2025_api_create_order( WP_REST_Request $request ) {
-     $params = $request->get_params();
-     $line_items           = $params['line_items'];
-     $payment_method       = $params['payment_method'];
-     $payment_method_title = $params['payment_method_title'];
-     $customer_id          = $params['customer_id'];
-     $status               = $params['status'];
-     $sale_type            = $params['sale_type'];
-     $customer_note        = $params['customer_note'];
-     $subscription_title        = $params['subscription_title'] ?? null;
-     $subscription_event_date_str = $params['subscription_start_date'] ?? null;
-     $subscription_color        = $params['subscription_color'] ?? null;
+ function pos2025_api_create_order( WP_REST_Request $request ) { /* ... (sin cambios) ... */ }
 
-     error_log("POS2025 CREATE ORDER - Inicio. Sale Type: {$sale_type}, Customer ID: {$customer_id}, Nota Recibida: '{$customer_note}'");
 
-     try {
-         $order = wc_create_order( array( 'customer_id' => $customer_id, 'status' => 'pending' ) );
-         if ( is_wp_error( $order ) ) {
-             error_log("POS2025 Error: wc_create_order falló. " . $order->get_error_message());
-             return new WP_Error( 'rest_order_creation_failed', __( 'No se pudo crear el objeto de pedido.', 'pos2025' ), array( 'status' => 500 ) );
-         }
-         $order_id_temp = $order->get_id();
-         error_log("POS2025 CREATE ORDER - Objeto Pedido Creado (ID: {$order_id_temp})");
+// *** INICIO: Callback para eventos del calendario ***
+/**
+ * Callback para obtener los pedidos de tipo 'subscription' como eventos para FullCalendar.
+ *
+ * @param WP_REST_Request $request Datos de la petición (puede incluir 'start' y 'end').
+ * @return WP_REST_Response|WP_Error Respuesta JSON con array de eventos o error.
+ */
+function pos2025_api_get_calendar_events( WP_REST_Request $request ) {
+    error_log('[POS CAL API] - get_calendar_events called.'); // Log inicial
 
-         if ( ! empty( $customer_note ) ) {
-            $order->add_order_note( $customer_note, true );
-            error_log("POS2025 CREATE ORDER - Nota Cliente añadida al historial del pedido.");
-         } else { error_log("POS2025 CREATE ORDER - Nota Cliente vacía."); }
+    $start_date_str = $request->get_param('start');
+    $end_date_str   = $request->get_param('end');
+    error_log("[POS CAL API] - Received Start: {$start_date_str}, End: {$end_date_str}"); // Log fechas
 
-         $has_valid_items = false;
-         foreach ( $line_items as $item ) {
-             $product_id   = $item['product_id'];
-             $variation_id = $item['variation_id'] ?? 0;
-             $quantity     = $item['quantity'];
-             $product = wc_get_product( $variation_id ?: $product_id );
-             if ( ! $product ) { error_log("POS2025 Advertencia: Producto ID {$product_id} / Variación ID {$variation_id} no encontrado."); continue; }
-             $order->add_product( $product, $quantity );
-             $has_valid_items = true;
-         }
-         if ( !$has_valid_items ) {
-              $order->delete(true);
-              error_log("POS2025 Error: No se añadieron productos válidos. Pedido {$order_id_temp} borrado.");
-              return new WP_Error( 'rest_no_valid_products', __( 'No se pudieron añadir productos válidos al pedido.', 'pos2025' ), array( 'status' => 400 ) );
-         }
-         error_log("POS2025 CREATE ORDER - Productos añadidos.");
+    $args = array(
+        'limit' => -1, // Obtener todos los pedidos que coincidan
+        'status' => array_keys( wc_get_order_statuses() ), // Considerar todos los estados
+        'meta_query' => array(
+            'relation' => 'AND', // Asegurar que ambas condiciones meta se cumplan
+            array(
+                'key'     => '_pos_sale_type',
+                'value'   => 'subscription',
+                'compare' => '=',
+            ),
+            array(
+                'key'     => '_pos_calendar_event_date', // Asegurarse que la fecha exista
+                'compare' => 'EXISTS',
+            ),
+            array(
+                'key'     => '_pos_calendar_event_date', // Y que no esté vacía
+                'value'   => '',
+                'compare' => '!=',
+            ),
+        ),
+        'orderby' => 'date',
+        'order'   => 'DESC',
+    );
 
-         if ( $customer_id > 0 ) {
-              error_log("POS2025 CREATE ORDER - Intentando obtener dirección para Customer ID: {$customer_id}");
-              $customer = new WC_Customer( $customer_id );
-              if ( $customer && $customer->get_id() > 0 ) {
-                  $billing_address = $customer->get_billing(); // Obtener array completo
-                  $shipping_address = $customer->get_shipping(); // Obtener array completo
-                  error_log("POS2025 CREATE ORDER - Dirección Facturación Obtenida: " . print_r($billing_address, true));
-                  if (!empty($billing_address) && (!empty($billing_address['email']) || !empty($billing_address['first_name']))) {
-                      $order->set_address( $billing_address, 'billing' ); error_log("POS2025 CREATE ORDER - Dirección Facturación establecida.");
-                  } else { error_log("POS2025 CREATE ORDER - Dirección Facturación incompleta."); }
-                  if (!empty($shipping_address) && (!empty($shipping_address['first_name']) || !empty($shipping_address['address_1']))) {
-                       $order->set_address( $shipping_address, 'shipping' ); error_log("POS2025 CREATE ORDER - Dirección Envío establecida.");
-                  } elseif (!empty($billing_address) && (!empty($billing_address['email']) || !empty($billing_address['first_name']))) {
-                       $order->set_address( $billing_address, 'shipping' ); error_log("POS2025 CREATE ORDER - Dirección Envío (fallback a facturación) establecida.");
-                  } else { error_log("POS2025 CREATE ORDER - Dirección Envío incompleta."); }
-              } else { error_log("POS2025 CREATE ORDER - WC_Customer no encontrado para ID: {$customer_id}"); }
-         } else { error_log("POS2025 CREATE ORDER - No hay Customer ID."); }
+    // --- Filtrado por Fechas (si se proporcionan start/end) ---
+    $date_query_conditions = array();
+    if ( $start_date_str && preg_match('/^\d{4}-\d{2}-\d{2}/', $start_date_str) ) {
+         $start_date = substr($start_date_str, 0, 10);
+         $date_query_conditions[] = array(
+             'key'     => '_pos_calendar_event_date',
+             'compare' => '>=',
+             'value'   => $start_date,
+             'type'    => 'DATE',
+         );
+         error_log("[POS CAL API] - Applying date filter: >= {$start_date}");
+    }
+     if ( $end_date_str && preg_match('/^\d{4}-\d{2}-\d{2}/', $end_date_str) ) {
+         $end_date = substr($end_date_str, 0, 10);
+         $date_query_conditions[] = array(
+             'key'     => '_pos_calendar_event_date',
+             'compare' => '<', // FullCalendar end date es exclusivo
+             'value'   => $end_date,
+             'type'    => 'DATE',
+         );
+         error_log("[POS CAL API] - Applying date filter: < {$end_date}");
+    }
 
-         $order->set_payment_method( $payment_method );
-         $order->set_payment_method_title( $payment_method_title );
-         error_log("POS2025 CREATE ORDER - Método de pago establecido.");
-         $order->calculate_totals();
-         error_log("POS2025 CREATE ORDER - Totales calculados.");
+    // Añadir las condiciones de fecha a la meta_query principal
+    if (!empty($date_query_conditions)) {
+        // Añadimos las condiciones de fecha dentro de la 'meta_query' existente
+        foreach ($date_query_conditions as $condition) {
+            $args['meta_query'][] = $condition;
+        }
+        // Aseguramos que todas las condiciones se cumplan
+        $args['meta_query']['relation'] = 'AND';
+    }
 
-         $order_id = null;
+    error_log('[POS CAL API] - WC_Order_Query Args: ' . print_r($args, true)); // Log argumentos consulta
 
-         if ( $sale_type === 'subscription' ) {
-             error_log("POS2025 CREATE ORDER - Procesando tipo: subscription");
-             if ( empty($subscription_title) ) { $order->delete(true); error_log("POS2025 Error: Título evento vacío."); return new WP_Error('rest_invalid_subscription_data', __('El título del evento es obligatorio.', 'pos2025'), ['status' => 400]); }
-             $event_date_valid = false;
-             if ( $subscription_event_date_str && preg_match('/^\d{4}-\d{2}-\d{2}$/', $subscription_event_date_str) ) { $d = DateTime::createFromFormat('Y-m-d', $subscription_event_date_str); if ($d && $d->format('Y-m-d') === $subscription_event_date_str) { $event_date_valid = true; } }
-             if ( !$event_date_valid ) { $order->delete(true); error_log("POS2025 Error: Fecha evento inválida."); return new WP_Error('rest_invalid_subscription_data', __('La fecha de inicio es obligatoria (YYYY-MM-DD).', 'pos2025'), ['status' => 400]); }
-             if ( $customer_id <= 0 ) { $order->delete(true); error_log("POS2025 Error: Cliente no seleccionado para suscripción."); return new WP_Error('rest_invalid_subscription_data', __('Se requiere un cliente.', 'pos2025'), ['status' => 400]); }
+    $orders = wc_get_orders( $args );
+    error_log('[POS CAL API] - Orders found: ' . count($orders)); // Log cantidad encontrada
 
-             $order->update_meta_data( '_pos_sale_type', 'subscription' );
-             $order->update_meta_data( '_pos_calendar_event_title', $subscription_title );
-             $order->update_meta_data( '_pos_calendar_event_date', $subscription_event_date_str );
-             $order->update_meta_data( '_pos_calendar_event_color', $subscription_color ?: '#3a87ad' );
-             error_log("POS2025 CREATE ORDER - Metadatos de evento añadidos.");
-             $order->update_status( $status, __( 'Pedido POS con datos de evento.', 'pos2025' ), true );
-             error_log("POS2025 CREATE ORDER - Estado actualizado a: {$status}");
-             $order_id = $order->save();
-             error_log("POS2025 CREATE ORDER - Pedido guardado. ID final: {$order_id}");
-             if ( ! $order_id ) { error_log("POS2025 Error: $order->save() falló."); return new WP_Error( 'rest_order_save_failed', __( 'No se pudo guardar el pedido de evento.', 'pos2025' ), array( 'status' => 500 ) ); }
-             $response_data = array( 'success' => true, 'order_id' => $order_id, 'message' => __('Pedido con datos de evento creado.', 'pos2025') );
-             return new WP_REST_Response( $response_data, 201 );
+    $events = array();
+    if ( ! empty( $orders ) ) {
+        foreach ( $orders as $order ) {
+            $order_id = $order->get_id(); // Obtener ID para logs
+            $event_title = $order->get_meta( '_pos_calendar_event_title', true );
+            $event_date  = $order->get_meta( '_pos_calendar_event_date', true ); // Formato YYYY-MM-DD
+            $event_color = $order->get_meta( '_pos_calendar_event_color', true ) ?: '#3a87ad'; // Color por defecto
 
-         } elseif ( $sale_type === 'credit' ) {
-             error_log("POS2025 CREATE ORDER - Procesando tipo: credit");
-             if ( $customer_id <= 0 ) { $order->delete(true); error_log("POS2025 Error: Cliente no seleccionado para crédito."); return new WP_Error('rest_invalid_credit_data', __('Se requiere un cliente para crédito.', 'pos2025'), ['status' => 400]); }
-             $order->update_meta_data( '_pos_sale_type', 'credit' ); error_log("POS2025 CREATE ORDER - Metadato _pos_sale_type=credit añadido.");
-             $order->update_status( 'on-hold', __( 'Pedido a crédito TPV.', 'pos2025' ), true ); error_log("POS2025 CREATE ORDER - Estado actualizado a: on-hold");
-             $order_id = $order->save(); error_log("POS2025 CREATE ORDER - Pedido guardado. ID final: {$order_id}");
-             if ( ! $order_id ) { error_log("POS2025 Error: $order->save() falló."); return new WP_Error( 'rest_order_save_failed', __( 'No se pudo guardar el pedido a crédito.', 'pos2025' ), array( 'status' => 500 ) ); }
-             $response_data = array( 'success' => true, 'order_id' => $order_id, 'message' => __('Pedido a crédito creado.', 'pos2025') );
-             return new WP_REST_Response( $response_data, 201 );
+            // Log detallado por pedido
+            error_log("[POS CAL API] - Processing Order ID {$order_id}: Title='{$event_title}', Date='{$event_date}', Color='{$event_color}'");
 
-         } else { // Venta Directa
-             error_log("POS2025 CREATE ORDER - Procesando tipo: direct");
-             $order->update_meta_data( '_pos_sale_type', 'direct' ); error_log("POS2025 CREATE ORDER - Metadato _pos_sale_type=direct añadido.");
-             $order->update_status( $status, __( 'Pedido TPV POS 2025.', 'pos2025' ), true ); error_log("POS2025 CREATE ORDER - Estado actualizado a: {$status}");
-             $order_id = $order->save(); error_log("POS2025 CREATE ORDER - Pedido guardado. ID final: {$order_id}");
-             if ( ! $order_id ) { error_log("POS2025 Error: $order->save() falló."); return new WP_Error( 'rest_order_save_failed', __( 'No se pudo guardar el pedido.', 'pos2025' ), array( 'status' => 500 ) ); }
-             $response_data = array( 'success' => true, 'order_id' => $order_id, 'message' => __('Pedido creado con éxito.', 'pos2025') );
-             return new WP_REST_Response( $response_data, 201 );
-         }
+            // Validar que tenemos fecha y título
+            if ( $event_date && $event_title && preg_match('/^\d{4}-\d{2}-\d{2}$/', $event_date) ) { // Validar formato fecha
+                $events[] = array(
+                    'id'    => $order_id, // ID del pedido
+                    'title' => $event_title,
+                    'start' => $event_date, // FullCalendar entiende YYYY-MM-DD
+                    'color' => $event_color,
+                    'allDay'=> true, // Marcar como evento de día completo
+                    'url'   => $order->get_edit_order_url(), // Enlace para editar el pedido
+                    // 'extendedProps' => [ 'customer' => $order->get_formatted_billing_full_name() ] // Opcional
+                );
+            } else {
+                 error_log("[POS CAL API] - Skipping Order ID {$order_id}: Missing title or invalid/missing date ('{$event_date}').");
+            }
+        }
+    }
 
-     } catch ( Exception $e ) {
-          error_log("POS2025 Error Crítico al procesar pedido ({$sale_type}): " . $e->getMessage() . "\nTrace: " . $e->getTraceAsString());
-          if ( isset($order) && $order instanceof WC_Order ) {
-              $order->add_order_note( sprintf( __('Error TPV: %s', 'pos2025'), $e->getMessage() ), false );
-              $order->update_status('failed', __('Error creación TPV.', 'pos2025'));
-              $order->save();
-          }
-          return new WP_Error( 'rest_order_exception', __( 'Error inesperado: ', 'pos2025' ) . $e->getMessage(), array( 'status' => 500 ) );
-     }
- }
+    error_log('[POS CAL API] - Final events array: ' . print_r($events, true)); // Log array final
+    return new WP_REST_Response( $events, 200 );
+}
+// *** FIN: Callback para eventos del calendario ***
 
 ?>

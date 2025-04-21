@@ -57,7 +57,7 @@
     border-bottom: none;
 }
 #pos-products-list img {
-    max-width: 40px; /* Ligeramente más pequeño para móviles */
+    max-width: 40px;
     height: auto;
     border: 1px solid #eee;
     flex-shrink: 0; /* Evita que la imagen se encoja demasiado */
@@ -82,7 +82,7 @@
 }
 .product-variations {
     list-style: none;
-    padding-left: 15px; /* Reducido padding */
+    padding-left: 15px;
     margin-top: 8px;
     margin-bottom: 0;
     font-size: 0.9em;
@@ -92,21 +92,19 @@
     padding: 5px 0;
     border: none;
     border-top: 1px dashed #eee;
-    display: block; /* Cambiado para mejor flujo en móvil */
+    display: block;
     align-items: initial;
     gap: 5px;
-    position: relative; /* Para posicionar acciones si es necesario */
+    position: relative;
 }
 .product-variations li span {
     margin-right: 5px;
-    display: inline-block; /* Asegura espacio */
-    margin-bottom: 5px; /* Espacio antes de los botones */
+    display: inline-block;
+    margin-bottom: 5px;
 }
 .product-variations .variation-actions {
-    /* Ajustado: Mejor posicionamiento en móvil */
-    /* float: right; quitado */
-    display: block; /* Ocupa su propia línea */
-    text-align: right; /* Alinea botones a la derecha */
+    display: block;
+    text-align: right;
     margin-top: 5px;
 }
 
@@ -115,59 +113,80 @@
     grid-column: 2 / 3;
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 10px; /* Espacio entre secciones de la sidebar */
 }
 
-/* Secciones de la barra lateral */
-#pos-customer-section,
-#pos-cart-section,
-#pos-search-section {
+/* --- NUEVO/MODIFICADO: Estilos para alinear controles de búsqueda --- */
+.pos-search-controls,
+.pos-customer-search-controls {
+    display: flex;
+    align-items: center;
+    gap: 5px; /* Espacio entre input y botón */
+    margin-bottom: 10px; /* Espacio debajo del control */
+}
+
+.pos-search-controls input[type="search"],
+.pos-customer-search-controls input[type="search"] {
+    flex-grow: 1; /* Hace que el input ocupe el espacio disponible */
+}
+
+/* --- NUEVO: Ocultar etiquetas visualmente pero mantenerlas para accesibilidad --- */
+.screen-reader-text {
+    border: 0;
+    clip: rect(1px, 1px, 1px, 1px);
+    clip-path: inset(50%);
+    height: 1px;
+    margin: -1px;
+    overflow: hidden;
+    padding: 0;
+    position: absolute;
+    width: 1px;
+    word-wrap: normal !important;
+}
+
+/* --- NUEVO/MODIFICADO: Estilos comunes para las secciones de la sidebar --- */
+.pos-sidebar-section {
     background-color: #fff;
-    padding: 10px; /* Reducido padding para móviles */
+    padding: 15px;
     border: 1px solid #e5e5e5;
+    /* El gap en #pos-sidebar-column maneja el espacio entre secciones */
+    /* margin-bottom: 20px; */
 }
 
+/* --- Estilos específicos que ya estaban (revisados/ajustados) --- */
+
 #pos-search-section {
-    margin-bottom: 10px; /* Mantiene separación */
+    /* Aplicar estilos de sección si se desea consistencia visual */
+    background-color: #fff;
+    padding: 15px;
+    border: 1px solid #e5e5e5;
+    margin-bottom: 10px; /* Mantiene separación con lista de productos */
 }
-#pos-search-section label,
-#pos-customer-search-area label {
-    margin-right: 5px;
-    vertical-align: middle;
-    display: block; /* Etiqueta encima del input en móvil */
-    margin-bottom: 5px;
-}
-#pos-product-search,
-#pos-customer-search {
-    /* Ajustado: Ocupa ancho disponible */
-    width: 100%;
-    margin-right: 0; /* Sin margen derecho */
-    margin-bottom: 5px; /* Espacio antes del botón */
-    min-width: auto; /* Quita el min-width fijo */
-}
-#pos-search-section button,
-#pos-customer-search-area button {
-    vertical-align: middle;
-    /* Opcional: Hacer botón de ancho completo */
-    /* width: 100%; */
-    /* padding: 8px 10px; */
-}
+
+/* Ya no son necesarios si se usa .pos-search-controls y .screen-reader-text */
+/* #pos-search-section label,
+#pos-customer-search-area label { ... } */
+/* #pos-product-search,
+#pos-customer-search { ... } */
+/* #pos-search-section button,
+#pos-customer-search-area button { ... } */
+
 
 #pos-customer-list {
     list-style: none;
     padding: 0;
     margin: 10px 0 0 0;
-    max-height: 150px; /* Reducida altura máxima */
+    max-height: 150px;
     overflow-y: auto;
     border: 1px solid #eee;
 }
 #pos-customer-list li {
     padding: 8px;
     border-bottom: 1px solid #eee;
-    overflow: hidden; /* Mantiene el texto contenido */
+    overflow: hidden;
     white-space: nowrap;
     text-overflow: ellipsis;
-    cursor: pointer; /* Indica que es clickeable */
+    cursor: pointer;
 }
 #pos-customer-list li:last-child {
     border-bottom: none;
@@ -178,21 +197,24 @@
     background-color: #e0f2fe;
     border: 1px solid #b3e0fd;
     border-radius: 3px;
-    word-wrap: break-word; /* Permite que nombres largos se rompan */
+    word-wrap: break-word;
 }
 
+/* Estilos para los spinners */
 #pos-search-section .spinner.is-active,
-#pos-customer-section .spinner.is-active {
+#pos-customer-section .spinner.is-active,
+#pos-checkout-section .spinner.is-active, /* Añadido para checkout */
+#pos-customer-form-container .spinner.is-active { /* Añadido para form cliente */
     visibility: visible;
     opacity: 1;
-    display: inline-block; /* Asegura que se muestre */
+    display: inline-block;
     vertical-align: middle;
     margin-left: 5px;
 }
 .spinner {
     visibility: hidden;
     opacity: 0;
-    float: none;
+    float: none; /* Importante para alinear correctamente */
     vertical-align: middle;
     transition: opacity 0.3s ease-in-out;
 }
@@ -202,43 +224,45 @@
     list-style: none;
     margin: 0 0 15px 0;
     padding: 0;
-    max-height: 250px; /* Reducida altura máxima */
+    max-height: 250px;
     overflow-y: auto;
+    /* Añadir borde si se quiere separar visualmente */
+    border: 1px solid #ddd;
+    background: #fefefe; /* Fondo para la lista */
 }
 #pos-cart-items li {
-    padding: 8px 0;
+    padding: 8px 10px; /* Ajustar padding */
     border-bottom: 1px dashed #eee;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    gap: 8px; /* Ligeramente reducido */
-    flex-wrap: wrap; /* Permite que los elementos se envuelvan si no caben */
+    gap: 8px;
+    flex-wrap: wrap;
 }
 #pos-cart-items li:last-child {
     border-bottom: none;
 }
 #pos-cart-items .item-name {
     flex-grow: 1;
-    flex-basis: 100px; /* Base mínima antes de envolver */
+    flex-basis: 100px;
     margin-right: 5px;
-    /* Añadido: Mejor manejo de texto largo */
     word-break: break-word;
 }
 #pos-cart-items .item-qty {
     display: flex;
     align-items: center;
-    flex-basis: 120px; /* Espacio para botones y cantidad */
-    flex-grow: 0; /* No crece */
-    flex-shrink: 0; /* No se encoge */
+    flex-basis: 120px;
+    flex-grow: 0;
+    flex-shrink: 0;
 }
 #pos-cart-items .item-qty .button-qty {
-    padding: 0 6px; /* Área de toque */
+    padding: 0 6px;
     line-height: 1.5;
     height: auto;
-    min-width: 25px; /* Área de toque */
+    min-width: 25px;
 }
 #pos-cart-items .item-quantity-input {
-    width: 45px; /* Ligeramente más estrecho */
+    width: 45px;
     text-align: center;
     margin: 0 3px;
     padding: 2px 4px;
@@ -247,9 +271,9 @@
 #pos-cart-items .item-price,
 #pos-cart-items .item-subtotal {
     white-space: nowrap;
-    min-width: 55px; /* Ligeramente más estrecho */
+    min-width: 55px;
     text-align: right;
-    flex-basis: 60px; /* Espacio reservado */
+    flex-basis: 60px;
     flex-grow: 0;
 }
 #pos-cart-items .remove-item {
@@ -257,11 +281,11 @@
     background: none;
     border: none;
     cursor: pointer;
-    font-size: 1.6em; /* Ligeramente más grande para tocar */
+    font-size: 1.6em;
     line-height: 1;
     padding: 0 5px;
     margin-left: 5px;
-    flex-shrink: 0; /* No se encoge */
+    flex-shrink: 0;
 }
 #pos-cart-items .remove-item:hover {
     color: #a00;
@@ -269,34 +293,32 @@
 
 
 #pos-cart-total {
-    margin-top: 15px;
-    margin-bottom: 15px;
-    font-size: 1.2em; /* Ligeramente más pequeño */
+    /* Quitar margen superior si está dentro de .pos-sidebar-section */
+    /* margin-top: 15px; */
+    margin-bottom: 0; /* Sin margen inferior si es lo último en su sección */
+    font-size: 1.2em;
     font-weight: bold;
     text-align: right;
     border-top: 2px solid #ddd;
     padding-top: 10px;
 }
 
-#pos-checkout-section {
-    margin-top: 15px;
-    border-top: 1px solid #eee;
-    padding-top: 15px;
-}
+/* #pos-checkout-section ya tiene estilos de .pos-sidebar-section */
 
 #pos-checkout-button {
     width: 100%;
-    padding: 12px 15px; /* Más padding para mejor toque */
+    padding: 12px 15px;
     text-align: center;
     font-size: 1.1em;
+    margin-top: 15px; /* Espacio antes del botón */
 }
 
 #pos-subscription-terms {
     border: 1px dashed #ccc;
     padding: 10px;
     margin-top: 10px;
+    margin-bottom: 15px;
     background-color: #fafafa;
-    /* display: none; se controla por JS */
 }
 #pos-subscription-terms label {
     display: block;
@@ -308,84 +330,122 @@
 #pos-subscription-terms input[type="color"] {
     width: 100%;
     margin-bottom: 10px;
-    padding: 8px; /* Mejor padding para inputs */
+    padding: 8px;
 }
 
+/* --- Estilos para el Calendario --- */
+#pos-calendar-section {
+    margin-top: 20px;
+    background-color: #fff;
+    padding: 15px;
+    border: 1px solid #e5e5e5;
+}
+
+#pos-calendar {
+    min-height: 400px; /* Asegura una altura mínima */
+}
+
+/* Opcional: Estilo para indicar carga en el calendario */
+.calendar-loading {
+    position: relative;
+}
+.calendar-loading::after {
+    content: 'Cargando eventos...'; /* O un spinner CSS */
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(255, 255, 255, 0.7);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 1.2em;
+    color: #555;
+    z-index: 10;
+}
+
+/* Ajustes específicos de FullCalendar */
+.fc .fc-button {
+    /* text-transform: capitalize; */
+}
+
+.fc-event {
+    cursor: pointer;
+}
+
+
 /* --- Media Query para pantallas pequeñas (Móviles y Tablets pequeñas) --- */
-/* Puedes ajustar el valor de max-width (ej. 768px, 800px, 992px) según necesites */
 @media (max-width: 800px) {
     #pos2025-app-container {
-        /* Cambia a una sola columna */
-        grid-template-columns: 1fr;
-        gap: 15px; /* Un poco más de espacio vertical */
+        grid-template-columns: 1fr; /* Cambia a una sola columna */
+        gap: 15px;
     }
 
-    /* Resetea la asignación de columna explícita */
     #pos-products-column,
     #pos-sidebar-column {
-        grid-column: auto; /* O 1 / -1 */
+        grid-column: auto; /* Resetea la asignación de columna */
     }
 
     #pos-products-list {
-         /* Ajusta la altura si es necesario para móvil */
-        max-height: 45vh; /* Un poco menos de altura quizás */
+        max-height: 45vh;
     }
 
     #pos-cart-items {
-        max-height: 30vh; /* Ajusta según veas necesario */
+        max-height: 30vh;
     }
 
-    /* Asegura que las secciones de la barra lateral ocupen todo el ancho */
-    #pos-customer-section,
-    #pos-cart-section,
-    #pos-search-section {
-        width: 100%;
+    /* Ajustes para controles de búsqueda en móvil (mantener flex si se quiere en línea) */
+    .pos-search-controls,
+    .pos-customer-search-controls {
+        /* flex-wrap: wrap; /* Permitir que los botones bajen si no caben */
     }
 
-    /* Ajustes específicos para elementos dentro de la lista de productos en móvil */
-    #pos-products-list li {
-        /* Podrías hacer que la imagen y el texto se apilen si es muy estrecho */
-        /* flex-direction: column; */
-        /* align-items: flex-start; */
-    }
-     #pos-products-list img {
-        max-width: 35px; /* Aún más pequeño si es necesario */
+    #pos-products-list img {
+        max-width: 35px;
     }
 
-    /* Ajustes para el carrito en móvil */
-     #pos-cart-items li {
-        /* Puedes forzar el wrap más fácilmente si es necesario */
-        /* flex-wrap: wrap; ya está arriba, pero puedes ajustar aquí */
+    #pos-cart-items li {
         gap: 5px;
     }
     #pos-cart-items .item-name {
-        flex-basis: calc(100% - 180px); /* Intenta calcular espacio restante */
+        flex-basis: calc(100% - 180px); /* Ajustar según sea necesario */
     }
-    #pos-cart-items .item-qty {
-        /* Quizás necesite más espacio o ir debajo */
-    }
-
 }
 
 /* --- Opcional: Media Query para pantallas MUY pequeñas --- */
 @media (max-width: 480px) {
     body {
-        /* Podrías reducir el tamaño de fuente base para pantallas muy pequeñas */
         /* font-size: 13px; */
     }
 
     #pos-products-list li,
     #pos-cart-items li {
-        padding: 8px 5px; /* Menos padding horizontal */
+        padding: 8px 5px;
         gap: 5px;
-    }
-
-    #pos-cart-items .item-name {
-       /* Más ajustes si el texto se corta mucho */
     }
 
     #pos-checkout-button {
         padding: 10px;
         font-size: 1em;
+    }
+
+    /* Forzar apilamiento de controles de búsqueda en pantallas muy pequeñas */
+    .pos-search-controls,
+    .pos-customer-search-controls {
+        flex-direction: column; /* Apilar elementos */
+        align-items: stretch; /* Estirar elementos al ancho completo */
+    }
+    .pos-search-controls input[type="search"],
+    .pos-customer-search-controls input[type="search"],
+    .pos-search-controls button,
+    .pos-customer-search-controls button {
+        width: 100%; /* Ocupar todo el ancho */
+        margin-bottom: 5px; /* Espacio entre elementos apilados */
+        margin-left: 0; /* Resetear margen izquierdo si lo hubiera */
+    }
+     .pos-search-controls button:last-child,
+    .pos-customer-search-controls button:last-child {
+         margin-bottom: 0;
     }
 }
