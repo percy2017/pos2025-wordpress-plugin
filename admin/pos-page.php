@@ -21,12 +21,7 @@ function pos2025_add_pos_admin_menu() {
 add_action( 'admin_menu', 'pos2025_add_pos_admin_menu' );
 
 
-/**
- * Renderiza el contenido HTML de la página del TPV.
- * MEJORADO: Reorganización de la interfaz.
- * - Búsqueda de productos/clientes en una línea.
- * - Sidebar dividida en Cliente, Carrito y Procesar Pago.
- */
+/* Renderiza el contenido HTML de la página del TPV. */
 function pos2025_render_pos_page() {
     ?>
     <div class="wrap" id="pos2025-wrap">
@@ -182,9 +177,8 @@ function pos2025_render_pos_page() {
 }
 
 /**
- * Enqueue scripts y estilos específicos para la página del POS.
- * CORREGIDO: Eliminado encolado de CSS de FullCalendar y añadida dependencia JS correcta.
- */
+* Enqueue scripts y estilos específicos para la página del POS.
+*/
 function pos2025_enqueue_pos_assets( $hook_suffix ) {
     // Comprueba si estamos en nuestra página específica del TPV
     if ( 'toplevel_page_pos2025-terminal' !== $hook_suffix ) {
